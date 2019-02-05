@@ -862,17 +862,9 @@ data &lt;- data %&gt;%
 <td align="left">0</td>
 <td align="right">870</td>
 </tr>
-<tr class="odd">
-<td align="left">Create a summary</td>
-<td align="right">dataset f</td>
-<td align="right">or the va</td>
-<td align="left">riables</td>
-<td align="right">that repe</td>
-<td align="left">at each row</td>
-<td align="right">, per person</td>
-</tr>
 </tbody>
 </table>
+<p>Create a summary dataset for the variables that repeat each row, per person</p>
 <pre class="r"><code>max &lt;- data %&gt;% 
   group_by(caseid) %&gt;% 
   summarise_at(vars(tele, socl, actl, pass, ccare, hswrk, leisure, sleep, year), funs(max))</code></pre>

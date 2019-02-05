@@ -294,6 +294,7 @@ knitr::kable(
   caption = "Long format.")
 remove(view)
 ```
+  
 Create a summary dataset for the variables that repeat each row, per person
 ```{r results = 'hide'}
 max <- data %>% 
