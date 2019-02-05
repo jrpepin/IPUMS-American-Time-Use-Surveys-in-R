@@ -367,8 +367,8 @@ data &lt;- data %&gt;% rename_all(tolower)</code></pre>
           telesolo   = as.integer(lbl_clean(telesolo)),
           telesp     = as.integer(lbl_clean(telesp)))</code></pre>
 </div>
-<div id="create-summary-variables-of-each-activity-duration" class="section level3">
-<h3>Create summary variables of each activity duration</h3>
+<div id="prepare-duration-and-activity-variables" class="section level3">
+<h3>Prepare duration and activity variables</h3>
 <pre class="r"><code># Change NA to 0 for duration &amp; activity minutes
 data[[&quot;duration&quot;]][is.na(data[[&quot;duration&quot;]])] &lt;- 0
 summary(data$duration)
@@ -402,25 +402,15 @@ data %&gt;%
 <h2>Create the activity variable components</h2>
 <p>This creates a logical object in RStudio for each activity category.<br />
 The activity codes can be found in ATUS’<a href="https://www.bls.gov/tus/lexiconnoex0317.pdf">Activity Coding Lexicon</a>.</p>
-<pre class="r"><code># Sleep
-sleep &lt;- data$activity %in% c(
-  &quot;10101&quot; , &quot;10102&quot; ,  &quot;10199&quot;)
-
-# Housework
-hswrk &lt;- data$activity %in% c(
-  &quot;20101&quot; , &quot;20102&quot; ,   &quot;20103&quot; ,   &quot;20104&quot; ,   &quot;20199&quot;)
-
-# Childcare
+<pre class="r"><code># Childcare
 ccare &lt;- data$activity %in% c(
   &quot;30101&quot; , &quot;30102&quot; ,   &quot;30103&quot; ,   &quot;30104&quot; ,   &quot;30105&quot; ,   &quot;30108&quot; ,   &quot;30109&quot; ,   &quot;30110&quot; ,   
   &quot;30111&quot; , &quot;30112&quot; ,   &quot;30199&quot; ,   &quot;30201&quot; ,   &quot;30202&quot; ,   &quot;30203&quot; ,   &quot;30204&quot; ,   &quot;30299&quot; ,   
   &quot;30301&quot; , &quot;30302&quot; ,   &quot;30303&quot; ,   &quot;30399&quot; ,   &quot;30186&quot;)
 
-# Work
-work &lt;- data$activity %in% c(
-  &quot;50101&quot; , &quot;50102&quot; ,   &quot;50103&quot; ,   &quot;50189&quot; ,   &quot;50201&quot; ,   &quot;50202&quot; ,   &quot;50203&quot; ,   &quot;50204&quot; ,   
-  &quot;50289&quot; , &quot;50301&quot; ,   &quot;50302&quot; ,   &quot;50303&quot; ,   &quot;50304&quot; ,   &quot;50389&quot; ,   &quot;50403&quot; ,   &quot;50404&quot; ,   
-  &quot;50405&quot; , &quot;50481&quot; ,   &quot;50499&quot; ,   &quot;59999&quot; ,   &quot;180501&quot; , &quot;180502&quot; , &quot;180589&quot;)
+# Housework
+hswrk &lt;- data$activity %in% c(
+  &quot;20101&quot; , &quot;20102&quot; ,   &quot;20103&quot; ,   &quot;20104&quot; ,   &quot;20199&quot;)
 
 # Leisure
 leisure &lt;- data$activity %in% c(
@@ -439,6 +429,10 @@ leisure &lt;- data$activity %in% c(
   &quot;130499&quot; , &quot;120301&quot; , &quot;120302&quot; ,  &quot;120303&quot; ,  &quot;120304&quot; ,  &quot;120305&quot; ,  &quot;120306&quot; ,  &quot;120308&quot; ,  
   &quot;120399&quot; , &quot;120503&quot; , &quot;129999&quot; ,  &quot;130399&quot; ,  &quot;139999&quot; ,  &quot;160101&quot; ,  &quot;160102&quot; ,  &quot;181201&quot; ,  
   &quot;181202&quot; , &quot;181204&quot; , &quot;181283&quot; ,  &quot;181299&quot; ,  &quot;181301&quot; ,  &quot;181302&quot; ,  &quot;181399&quot;)
+
+# Sleep
+sleep &lt;- data$activity %in% c(
+  &quot;10101&quot; , &quot;10102&quot; ,  &quot;10199&quot;)
 
 #Leisure sub-types
 socl &lt;- data$activity %in% c(
@@ -470,11 +464,10 @@ tele   &lt;- data$activity %in% c(
 <h2>Create the activity identification variables in the dataset</h2>
 <p>Next, we use those logical objects to create the activity category variables in our dataset. First, we create a new variable called “actcat”, with missing values. This variable will identify the activity categories, using the logical objects we created.</p>
 <pre class="r"><code>data$actcat&lt;-NA
+data$actcat[ccare]   &lt;- &quot;child care&quot;
+data$actcat[hswrk]   &lt;- &quot;housework&quot;
 data$actcat[leisure] &lt;- &quot;leisure&quot;
 data$actcat[sleep]   &lt;- &quot;sleep&quot;
-data$actcat[hswrk]   &lt;- &quot;housework&quot;
-data$actcat[ccare]   &lt;- &quot;child care&quot;
-data$actcat[work]    &lt;- &quot;work&quot;
 data$actcat &lt;- as.character(data$actcat)</code></pre>
 <p>We’ll also create a leisure category variable and one for television. Sub-categories of activties need their own variables. Here, television is a subcategory of passive leisure, which is a subcategory of leisure. Thus, we have more refined identification separated into different variables.</p>
 <pre class="r"><code>data$leiscat&lt;-NA
@@ -671,8 +664,7 @@ data &lt;- data %&gt;%
   summarise (leisure  = sum(duration[actcat ==  &quot;leisure&quot;],    na.rm=TRUE),
              sleep    = sum(duration[actcat ==  &quot;sleep&quot;],      na.rm=TRUE),
              hswrk    = sum(duration[actcat ==  &quot;housework&quot;],  na.rm=TRUE),
-             ccare    = sum(duration[actcat ==  &quot;child care&quot;], na.rm=TRUE),
-             work     = sum(duration[actcat ==  &quot;work&quot;],       na.rm=TRUE)) %&gt;%
+             ccare    = sum(duration[actcat ==  &quot;child care&quot;], na.rm=TRUE)) %&gt;%
   inner_join(data, by='caseid')
 
 # Leisure activity variables
@@ -697,7 +689,6 @@ data &lt;- data %&gt;%
 <th align="right">sleep</th>
 <th align="right">hswrk</th>
 <th align="right">ccare</th>
-<th align="right">work</th>
 <th align="right">socl</th>
 <th align="right">actl</th>
 <th align="right">pass</th>
@@ -712,7 +703,6 @@ data &lt;- data %&gt;%
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
-<td align="right">0</td>
 <td align="right">200</td>
 <td align="right">325</td>
 <td align="right">325</td>
@@ -721,7 +711,6 @@ data &lt;- data %&gt;%
 <td align="left">20030100013280</td>
 <td align="right">525</td>
 <td align="right">870</td>
-<td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
@@ -736,7 +725,6 @@ data &lt;- data %&gt;%
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
-<td align="right">0</td>
 <td align="right">200</td>
 <td align="right">325</td>
 <td align="right">325</td>
@@ -748,7 +736,6 @@ data &lt;- data %&gt;%
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
-<td align="right">0</td>
 <td align="right">200</td>
 <td align="right">325</td>
 <td align="right">325</td>
@@ -757,7 +744,6 @@ data &lt;- data %&gt;%
 <td align="left">20030100013280</td>
 <td align="right">525</td>
 <td align="right">870</td>
-<td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
@@ -889,16 +875,16 @@ data &lt;- data %&gt;%
 </table>
 <pre class="r"><code>max &lt;- data %&gt;% 
   group_by(caseid) %&gt;% 
-  summarise_at(vars(tele, socl, actl, pass, leisure, sleep, hswrk, ccare, work, year), funs(max))</code></pre>
+  summarise_at(vars(tele, socl, actl, pass, ccare, hswrk, leisure, sleep, year), funs(max))</code></pre>
 <p>Notice that each person is now represented only once per row.</p>
-<pre><code>## # A tibble: 5 x 10
-##   caseid          tele  socl  actl  pass leisure sleep hswrk ccare  work
-##   &lt;chr&gt;          &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-## 1 20030100013280   325     0   200   325     525   870     0     0     0
-## 2 20030100013344    60   530     0    60     610   620     0    60     0
-## 3 20030100013352   120   220     0   120     340   560    15     0     0
-## 4 20030100013848   265     0     0   265     265   720     0     5     0
-## 5 20030100014165    60     0    60    60     130   385     0   120   515</code></pre>
+<pre><code>## # A tibble: 5 x 9
+##   caseid          tele  socl  actl  pass ccare hswrk leisure sleep
+##   &lt;chr&gt;          &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;
+## 1 20030100013280   325     0   200   325     0     0     525   870
+## 2 20030100013344    60   530     0    60    60     0     610   620
+## 3 20030100013352   120   220     0   120     0    15     340   560
+## 4 20030100013848   265     0     0   265     5     0     265   720
+## 5 20030100014165    60     0    60    60   120     0     130   385</code></pre>
 <p>Create a summary dataset for the variables that appear in the first row only, by person</p>
 <pre class="r"><code>rec1 &lt;- data %&gt;% 
   group_by(caseid) %&gt;% 
@@ -930,19 +916,19 @@ data &lt;- data %&gt;%
 <pre class="r"><code>atus &lt;- reduce(list(max, rec1, rec2), 
                left_join, by = &quot;caseid&quot;)</code></pre>
 <p>Take a look at the person-level file with activity duration summary variables</p>
-<pre><code>## # A tibble: 5 x 31
-##   caseid  tele  socl  actl  pass leisure sleep hswrk ccare  work  year
-##   &lt;chr&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-## 1 20030~   325     0   200   325     525   870     0     0     0  2003
-## 2 20030~    60   530     0    60     610   620     0    60     0  2003
-## 3 20030~   120   220     0   120     340   560    15     0     0  2003
-## 4 20030~   265     0     0   265     265   720     0     5     0  2003
-## 5 20030~    60     0    60    60     130   385     0   120   515  2003
-## # ... with 20 more variables: hh_size &lt;int&gt;, hh_child &lt;int&gt;,
-## #   hh_numkids &lt;int&gt;, ageychild &lt;int&gt;, hh_numadults &lt;int&gt;, region &lt;fct&gt;,
-## #   age &lt;int&gt;, sex &lt;fct&gt;, race &lt;fct&gt;, hispan &lt;fct&gt;, marst &lt;fct&gt;,
-## #   educ &lt;int&gt;, fullpart &lt;chr&gt;, spousepres &lt;fct&gt;, hh_numownkids &lt;int&gt;,
-## #   kidund13 &lt;fct&gt;, day &lt;fct&gt;, wt06 &lt;int&gt;, telesolo &lt;int&gt;, telesp &lt;int&gt;</code></pre>
+<pre><code>## # A tibble: 5 x 30
+##   caseid  tele  socl  actl  pass ccare hswrk leisure sleep  year hh_size
+##   &lt;chr&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;int&gt;
+## 1 20030~   325     0   200   325     0     0     525   870  2003       3
+## 2 20030~    60   530     0    60    60     0     610   620  2003       4
+## 3 20030~   120   220     0   120     0    15     340   560  2003       2
+## 4 20030~   265     0     0   265     5     0     265   720  2003       4
+## 5 20030~    60     0    60    60   120     0     130   385  2003       4
+## # ... with 19 more variables: hh_child &lt;int&gt;, hh_numkids &lt;int&gt;,
+## #   ageychild &lt;int&gt;, hh_numadults &lt;int&gt;, region &lt;fct&gt;, age &lt;int&gt;,
+## #   sex &lt;fct&gt;, race &lt;fct&gt;, hispan &lt;fct&gt;, marst &lt;fct&gt;, educ &lt;int&gt;,
+## #   fullpart &lt;chr&gt;, spousepres &lt;fct&gt;, hh_numownkids &lt;int&gt;, kidund13 &lt;fct&gt;,
+## #   day &lt;fct&gt;, wt06 &lt;int&gt;, telesolo &lt;int&gt;, telesp &lt;int&gt;</code></pre>
 </div>
 <div id="transform-variables" class="section level1">
 <h1>Transform variables</h1>
@@ -1056,23 +1042,22 @@ atus &lt;- filter(atus, raceth != &quot;Asian&quot; &amp; raceth != &quot;Other&
 <div id="use-listwise-deletion-to-deal-with-missing-data" class="section level2">
 <h2>Use listwise deletion to deal with missing data</h2>
 <pre class="r"><code># Keep only the variables of interest
-atus &lt;- select(atus, caseid, wt06, year, tele, socl, actl, pass, leisure, sleep, hswrk, ccare, work, socl, actl, pass, tele, telesolo, telesp, age, sex, mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
+atus &lt;- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, telesolo, telesp, age, sex, mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
 # Listwise deletion
 atus &lt;- na.omit(atus)</code></pre>
 <p>Here’s a look at the data</p>
-<pre><code>## Classes 'tbl_df', 'tbl' and 'data.frame':    30645 obs. of  25 variables:
+<pre><code>## Classes 'tbl_df', 'tbl' and 'data.frame':    30645 obs. of  24 variables:
 ##  $ caseid       : chr  &quot;20030100013344&quot; &quot;20030100013848&quot; &quot;20030100014209&quot; &quot;20030100014550&quot; ...
 ##  $ wt06         : int  1735322 6622022 1637826 1528296 4277052 505227 1058351 3594555 2574209 2720948 ...
 ##  $ year         : num  2003 2003 2003 2003 2003 ...
-##  $ tele         : num  60 265 0 120 0 175 83 0 0 111 ...
+##  $ ccare        : num  60 5 98 0 80 60 62 105 378 36 ...
+##  $ hswrk        : num  0 0 0 200 10 10 0 60 180 0 ...
+##  $ leisure      : num  610 265 0 120 542 175 113 180 197 131 ...
+##  $ sleep        : num  620 720 531 645 180 575 570 630 480 495 ...
 ##  $ socl         : num  530 0 0 0 90 0 0 120 165 0 ...
 ##  $ actl         : num  0 0 0 0 150 0 30 60 30 0 ...
 ##  $ pass         : num  60 265 0 120 267 175 83 0 0 131 ...
-##  $ leisure      : num  610 265 0 120 542 175 113 180 197 131 ...
-##  $ sleep        : num  620 720 531 645 180 575 570 630 480 495 ...
-##  $ hswrk        : num  0 0 0 200 10 10 0 60 180 0 ...
-##  $ ccare        : num  60 5 98 0 80 60 62 105 378 36 ...
-##  $ work         : num  0 0 514 0 270 0 540 45 0 478 ...
+##  $ tele         : num  60 265 0 120 0 175 83 0 0 111 ...
 ##  $ telesolo     : int  0 0 0 0 0 0 30 0 0 98 ...
 ##  $ telesp       : int  60 265 0 120 0 0 53 0 0 0 ...
 ##  $ age          : int  41 36 44 33 39 33 32 45 39 25 ...

@@ -80,6 +80,18 @@ data %>%
   summarise(total= sum(duration))
 
 # Activity summary variables by person
+
+# Childcare
+ccare <- data$activity %in% c(
+  "30101" ,	"30102" ,	"30103" ,	"30104" ,	"30105" ,	"30108" ,	"30109" ,	"30110" ,	
+  "30111" ,	"30112" ,	"30199" ,	"30201" ,	"30202" ,	"30203" ,	"30204" ,	"30299" ,	
+  "30301" ,	"30302" ,	"30303" ,	"30399" ,	"30186")
+
+# Housework
+hswrk <- data$activity %in% c(
+  "20101" ,	"20102" ,	"20103" ,	"20104" ,	"20199")
+
+# Leisure
 leisure <- data$activity %in% c(
   "120101" , "120199" , "120201" , 	"120202" , 	"120299" , 	"120401" , 	"120402" , 	"120403" , 	
   "120404" , "120405" ,	"120499" , 	"120501" , 	"120502" , 	"120504" , 	"120599" ,	"130201" ,	
@@ -97,21 +109,9 @@ leisure <- data$activity %in% c(
   "120399" , "120503" , "129999" ,	"130399" ,	"139999" ,	"160101" ,	"160102" ,	"181201" ,	
   "181202" , "181204" ,	"181283" ,	"181299" ,	"181301" ,	"181302" ,	"181399")
 
+# Sleep
 sleep <- data$activity %in% c(
   "10101" , "10102" ,  "10199")
-
-hswrk <- data$activity %in% c(
-  "20101" ,	"20102" ,	"20103" ,	"20104" ,	"20199")
-
-ccare <- data$activity %in% c(
-  "30101" ,	"30102" ,	"30103" ,	"30104" ,	"30105" ,	"30108" ,	"30109" ,	"30110" ,	
-  "30111" ,	"30112" ,	"30199" ,	"30201" ,	"30202" ,	"30203" ,	"30204" ,	"30299" ,	
-  "30301" ,	"30302" ,	"30303" ,	"30399" ,	"30186")
-
-work <- data$activity %in% c(
-  "50101" ,	"50102" ,	"50103" ,	"50189" ,	"50201" ,	"50202" ,	"50203" ,	"50204" ,	
-  "50289" , "50301" ,	"50302" ,	"50303" ,	"50304" ,	"50389" ,	"50403" ,	"50404" ,	
-  "50405" ,	"50481" ,	"50499" ,	"59999" ,	"180501" , "180502" , "180589")
 
 #Leisure sub-types
 socl <- data$activity %in% c(
@@ -134,16 +134,16 @@ actl   <- data$activity %in% c(
 pass   <- data$activity %in% c(
   "120301" , 	"120302" ,	"120303" ,	"120304" ,	"120305" ,	"120306" ,	"120308" ,	"120399" ,	
   "120503")
+
 # Television
 tele   <- data$activity %in% c(
   "120303" , "120304")
 
 data$actcat<-NA
+data$actcat[ccare]   <- "child care"
+data$actcat[hswrk]   <- "housework"
 data$actcat[leisure] <- "leisure"
 data$actcat[sleep]   <- "sleep"
-data$actcat[hswrk]   <- "housework"
-data$actcat[ccare]   <- "child care"
-data$actcat[work]    <- "work"
 data$actcat <- as.character(data$actcat)
 
 data$leiscat<-NA
@@ -156,15 +156,16 @@ data$telecat<-NA
 data$telecat[tele] <- "television"
 data$telecat <- as.character(data$telecat)
 
+# Master activty variables
 data <- data %>%
   group_by(caseid) %>%
-  summarise (leisure  = sum(duration[actcat == "leisure"],     na.rm=TRUE),
+  summarise (leisure  = sum(duration[actcat ==  "leisure"],    na.rm=TRUE),
              sleep    = sum(duration[actcat ==  "sleep"],      na.rm=TRUE),
              hswrk    = sum(duration[actcat ==  "housework"],  na.rm=TRUE),
-             ccare    = sum(duration[actcat ==  "child care"], na.rm=TRUE),
-             work     = sum(duration[actcat ==  "work"],       na.rm=TRUE)) %>%
+             ccare    = sum(duration[actcat ==  "child care"], na.rm=TRUE)) %>%
   inner_join(data, by='caseid')
 
+# Leisure activity variables
 data <- data %>%
   group_by(caseid) %>%
   summarise (socl     = sum(duration[leiscat ==  "social leisure"],      na.rm=TRUE),
@@ -172,6 +173,7 @@ data <- data %>%
              pass     = sum(duration[leiscat ==  "passive leisure"],     na.rm=TRUE)) %>%
   inner_join(data, by='caseid')
 
+# Television variables
 data <- data %>%
   group_by(caseid) %>%
   summarise (tele     = sum(duration[telecat ==  "television"],          na.rm=TRUE)) %>%
@@ -180,7 +182,7 @@ data <- data %>%
 # Create person level data -- need to add formatted variables above, then add to rec1 and rec2 -- add activity variables to max
 max <- data %>% 
   group_by(caseid) %>% 
-  summarise_at(vars(tele, socl, actl, pass, leisure, sleep, hswrk, ccare, work, year), funs(max)) 
+  summarise_at(vars(tele, socl, actl, pass, ccare, hswrk, leisure, sleep, year), funs(max))
 
 rec1 <- data %>% 
   group_by(caseid) %>% 
@@ -210,16 +212,17 @@ levels(atus$sex) <- c('Men', 'Women')
 summary(atus$age)
 
 # Marital status
-  # cohabitors in one group regardless of marital history
-  # use spousepres variable as indicator of marital status at time of ATUS diary
+# cohabitors in one group regardless of marital history
+# use spousepres variable as indicator of marital status at time of ATUS diary
 atus <- atus %>%
   mutate(
     mar = case_when(
-      spousepres == "Spouse present" ~ "Married",
-      spousepres == "Unmarried partner present" ~ "Cohabiting",
-      marst == "Never married" & spousepres == "No spouse or unmarried partner present" ~ "Single",
-      marst != "Widowed" & marst != "Never married" & spousepres == "No spouse or unmarried partner present" ~ "Divorced/Separated", 
-      TRUE              ~  NA_character_ 
+      spousepres == "Spouse present"                                                         ~ "Married",
+      spousepres == "Unmarried partner present"                                              ~ "Cohabiting",
+      marst      == "Never married" & spousepres == "No spouse or unmarried partner present" ~ "Single",
+      marst      != "Widowed" & marst != "Never married" & 
+        spousepres == "No spouse or unmarried partner present"                                 ~ "Divorced/Separated", 
+      TRUE                                                                                   ~  NA_character_ 
     ))
 atus$mar <- as_factor(atus$mar, levels = c("Married", "Cohabiting", "Single", "Divorced/Separated", ordered = TRUE))
 
@@ -240,10 +243,9 @@ atus$exfam <- relevel(atus$exfam, ref = "No extra adults")
 atus <- atus %>%
   mutate(
     kidu2 = case_when(
-     ageychild <=2 ~ "Child < 2",
-     TRUE ~ "No children < 2"
+      ageychild <=2 ~ "Child < 2",
+      TRUE          ~ "No children < 2"
     ))
-
 atus$kidu2 <- as_factor(atus$kidu2, levels = c("Child < 2", "No children < 2", ref = "No children < 2"))
 
 # Number of own HH kids
@@ -253,10 +255,10 @@ summary(atus$hh_numownkids)
 atus <- atus %>%
   mutate(
     employ = case_when(
-     fullpart == "1"  ~ "Full-time",
-     fullpart == "2"  ~ "Part-time",
-     fullpart == "99" ~ "Not employed",
-     TRUE                        ~  NA_character_
+      fullpart == "1"  ~ "Full-time",
+      fullpart == "2"  ~ "Part-time",
+      fullpart == "99" ~ "Not employed",
+      TRUE             ~  NA_character_
     ))
 atus$employ <- as_factor(atus$employ, levels = c("Full-time", "Part-time", "Not employed"))
 
@@ -277,11 +279,11 @@ atus$educ <- as_factor(atus$educ, levels = c("Less than high school", "High scho
 atus <- atus %>%
   mutate(
     raceth = case_when(
-      race == "White only" & hispan == "Not Hispanic"  ~ "White",
-      race == "Black only" & hispan == "Not Hispanic"  ~ "Black",
-      race == "Asian only" & hispan == "Not Hispanic"  ~ "Asian",
-      hispan != "Not Hispanic" ~ "Hispanic",
-      TRUE              ~  "Other"
+      race   == "White only" & hispan == "Not Hispanic"  ~ "White",
+      race   == "Black only" & hispan == "Not Hispanic"  ~ "Black",
+      race   == "Asian only" & hispan == "Not Hispanic"  ~ "Asian",
+      hispan != "Not Hispanic"                           ~ "Hispanic",
+      TRUE                                               ~ "Other"
     ))
 atus$raceth <- as_factor(atus$raceth, levels = c("White", "Black", "Hispanic", "Asian", "Other"))
 atus$raceth <- relevel(atus$raceth, ref = "White")
@@ -309,8 +311,8 @@ atus <- filter(atus, age >= 18 & age <=54) #prime working age
 atus <- filter(atus, raceth != "Asian" & raceth != "Other") # white, black, and Hispanic
 
 # Listwise deletion
-atus <- select(atus, caseid, wt06, year, tele, socl, actl, pass, leisure, sleep, hswrk, ccare, work, socl, actl, pass, tele, telesolo, telesp, 
-               age, sex, mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
+atus <- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, telesolo, telesp, age, sex, 
+               mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
 atus <- na.omit(atus)
 
 ## Linear models and margins

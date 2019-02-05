@@ -69,8 +69,9 @@ Notice the "/" lean to the right and not the left (\) if you are using a Windows
 ``` {r eval = FALSE}
 setwd("C:/Users/Joanna/Dropbox/MaritalStatus")
 ```
-``` {r echo = FALSE, results = 'hide'}
-setwd("C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --JP/Data Points")
+
+``` {r setup, echo = FALSE}
+knitr::opts_knit$set(root.dir = 'C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --JP/Data Points')
 ```
 
 ### Load the libraries
@@ -135,7 +136,7 @@ data <- data %>%
           telesp     = as.integer(lbl_clean(telesp)))
 ```
 
-### Create summary variables of each activity duration
+### Prepare duration and activity variables
 ```{r results = 'hide'}
 # Change NA to 0 for duration & activity minutes
 data[["duration"]][is.na(data[["duration"]])] <- 0
@@ -159,25 +160,15 @@ This creates a logical object in RStudio for each activity category.
 The activity codes can be found in ATUS'[Activity Coding Lexicon](https://www.bls.gov/tus/lexiconnoex0317.pdf).
 ```{r results = 'hide'}
 
-# Sleep
-sleep <- data$activity %in% c(
-  "10101" , "10102" ,  "10199")
-
-# Housework
-hswrk <- data$activity %in% c(
-  "20101" ,	"20102" ,	"20103" ,	"20104" ,	"20199")
-
 # Childcare
 ccare <- data$activity %in% c(
   "30101" ,	"30102" ,	"30103" ,	"30104" ,	"30105" ,	"30108" ,	"30109" ,	"30110" ,	
   "30111" ,	"30112" ,	"30199" ,	"30201" ,	"30202" ,	"30203" ,	"30204" ,	"30299" ,	
   "30301" ,	"30302" ,	"30303" ,	"30399" ,	"30186")
 
-# Work
-work <- data$activity %in% c(
-  "50101" ,	"50102" ,	"50103" ,	"50189" ,	"50201" ,	"50202" ,	"50203" ,	"50204" ,	
-  "50289" , "50301" ,	"50302" ,	"50303" ,	"50304" ,	"50389" ,	"50403" ,	"50404" ,	
-  "50405" ,	"50481" ,	"50499" ,	"59999" ,	"180501" , "180502" , "180589")
+# Housework
+hswrk <- data$activity %in% c(
+  "20101" ,	"20102" ,	"20103" ,	"20104" ,	"20199")
 
 # Leisure
 leisure <- data$activity %in% c(
@@ -196,6 +187,10 @@ leisure <- data$activity %in% c(
   "130499" , "120301" , "120302" ,	"120303" ,	"120304" ,	"120305" ,	"120306" ,	"120308" ,	
   "120399" , "120503" , "129999" ,	"130399" ,	"139999" ,	"160101" ,	"160102" ,	"181201" ,	
   "181202" , "181204" ,	"181283" ,	"181299" ,	"181301" ,	"181302" ,	"181399")
+
+# Sleep
+sleep <- data$activity %in% c(
+  "10101" , "10102" ,  "10199")
 
 #Leisure sub-types
 socl <- data$activity %in% c(
@@ -222,17 +217,17 @@ pass   <- data$activity %in% c(
 # Television
 tele   <- data$activity %in% c(
   "120303" , "120304")
+
 ```
 
 ## Create the activity identification variables in the dataset
 Next, we use those logical objects to create the activity category variables in our dataset. First, we create a new variable called "actcat", with missing values. This variable will identify the activity categories, using the logical objects we created.
 ```{r results = 'hide'}
 data$actcat<-NA
+data$actcat[ccare]   <- "child care"
+data$actcat[hswrk]   <- "housework"
 data$actcat[leisure] <- "leisure"
 data$actcat[sleep]   <- "sleep"
-data$actcat[hswrk]   <- "housework"
-data$actcat[ccare]   <- "child care"
-data$actcat[work]    <- "work"
 data$actcat <- as.character(data$actcat)
 ```
 
@@ -265,8 +260,7 @@ data <- data %>%
   summarise (leisure  = sum(duration[actcat ==  "leisure"],    na.rm=TRUE),
              sleep    = sum(duration[actcat ==  "sleep"],      na.rm=TRUE),
              hswrk    = sum(duration[actcat ==  "housework"],  na.rm=TRUE),
-             ccare    = sum(duration[actcat ==  "child care"], na.rm=TRUE),
-             work     = sum(duration[actcat ==  "work"],       na.rm=TRUE)) %>%
+             ccare    = sum(duration[actcat ==  "child care"], na.rm=TRUE)) %>%
   inner_join(data, by='caseid')
 
 # Leisure activity variables
@@ -284,7 +278,7 @@ data <- data %>%
   inner_join(data, by='caseid')
 ```
 ```{r echo = FALSE}
-view <- select(data, caseid, leisure, sleep, hswrk, ccare, work, socl, actl, pass, tele)
+view <- select(data, caseid, leisure, sleep, hswrk, ccare, socl, actl, pass, tele)
 knitr::kable(
   head(view, n = 5), 
   caption = "New Activity Summary Variables.")
@@ -304,11 +298,11 @@ Create a summary dataset for the variables that repeat each row, per person
 ```{r results = 'hide'}
 max <- data %>% 
   group_by(caseid) %>% 
-  summarise_at(vars(tele, socl, actl, pass, leisure, sleep, hswrk, ccare, work, year), funs(max))
+  summarise_at(vars(tele, socl, actl, pass, ccare, hswrk, leisure, sleep, year), funs(max))
 ```
 Notice that each person is now represented only once per row.  
 ```{r echo = FALSE}
-view <- select(max, caseid, tele, socl, actl, pass, leisure, sleep, hswrk, ccare, work)
+view <- select(max, caseid, tele, socl, actl, pass, ccare, hswrk, leisure, sleep)
 head(view, n = 5)
 remove(view)
 ```
@@ -467,7 +461,7 @@ atus <- filter(atus, raceth != "Asian" & raceth != "Other") # white, black, and 
 ## Use listwise deletion to deal with missing data
 ```{r results = 'hide'}
 # Keep only the variables of interest
-atus <- select(atus, caseid, wt06, year, tele, socl, actl, pass, leisure, sleep, hswrk, ccare, work, socl, actl, pass, tele, telesolo, telesp, age, sex, mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
+atus <- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, telesolo, telesp, age, sex, mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
 # Listwise deletion
 atus <- na.omit(atus)
 ```
