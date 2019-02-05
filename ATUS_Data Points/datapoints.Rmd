@@ -1,0 +1,569 @@
+---
+title: "Analyzing American Time Use Surveys in R"
+subtitle: "An Example: Mothers' Time Use by Marital Status"
+author: "Joanna R. Pepin"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+# Getting the data
+This tutorial uses data downloaded from IPUMS' [ATUS-X](https://www.atusdata.org/atus/) extract builder.
+The data includes samples from 2003 - 2017.
+
+## Variables:
+
+Type  | Variable      | Label
+----- | --------------| ----------------
+H	    |	RECTYPE	      |	Record Type  
+H	    |	YEAR	        |	Survey year  
+H	    |	CASEID	      |	ATUS Case ID
+H	    |	REGION        |	Region
+H	    |	HH_SIZE	      |	Number of people in household
+H	    |	HH_CHILD	    |	Children under 18 in household
+H	    |	HH_NUMKIDS  	|	Number of children under 18 in household
+H	    |	AGEYCHILD    	|	Age of youngest household child
+H	    |	HH_NUMADULTS	|	Number of adults in household
+P	    |	PERNUM	      |	Person number (general)
+P	    |	LINENO	      |	Person line number
+P	    |	DAY	          |	ATUS interview day of the week
+P	    |	WT06        	|	Person weight, 2006 methodology
+P	    |	AGE         	|	Age
+P	    |	SEX	          |	Sex
+P	    |	RACE         	|	Race
+P	    |	HISPAN	      |	Hispanic origin
+P	    |	MARST	        |	Marital status
+P   	|	EDUC         	|	Highest level of school completed
+P	    |	FULLPART     	|	Full time/part time employment status
+P	    |	SPOUSEPRES	  |	Spouse or unmarried partner in household
+P	    |	HH_NUMOWNKIDS	|	Number of own children under 18 in household
+P	    |	KIDUND13	    |	Own child under 13 in household
+A	    |	ACTLINE	      |	Activity line number
+A	    |	ACTIVITY	    |	Activity
+A	    |	DURATION    	|	Duration of activity
+A	    |	START       	|	Activity start time
+A	    |	STOP	        |	Activity stop time
+
+
+Additionally, two time use variables were constructed in ATUSX:  
+
+* The *telesolo* is a constructed time use variable from activity codes 120303 & 120304 conducted while *alone*.
+* The *telesp* is a constructed time use variable from activity codes 120303 & 120304 conducted with a *spouse* or *unmarried partner* present.
+
+Extract Notes:  
+
+* DATA FORMAT: .dat (fixed-width text)
+* STRUCTURE: Hierarchical
+* SAMPLE MEMBERS: Respondents
+  
+## Data Download and Import
+IPUMS NOTE: To load data, you must download both the extract's data and the DDI.  
+Download the .DAT file after ATUSX processes your request (you will get an email).  
+To download the DDI file, right click on the DDI link under the CODEBOOK heading, and select "save link file as"  
+
+Detailed instructions for importing the data can be found at: [https://cran.r-project.org/web/packages/ipumsr/vignettes/ipums.html](https://cran.r-project.org/web/packages/ipumsr/vignettes/ipums.html).  
+  
+This R code was executed in the open source edition of [RStudio](https://www.rstudio.com/products/RStudio/).
+  
+### Set the working directory file path
+You will need to change your file path to the local folder where you saved the ATUS data extracts.  
+Notice the "/" lean to the right and not the left (\) if you are using a Windows computer.
+``` {r eval = FALSE}
+setwd("C:/Users/Joanna/Dropbox/MaritalStatus")
+```
+``` {r echo = FALSE, results = 'hide'}
+setwd("C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --JP/Data Points")
+```
+
+### Load the libraries
+
+```{r warning = FALSE, error = FALSE, message = FALSE}
+library(ipumsr)
+library(tidyverse)
+```
+Libraries can be installed with the commands `install.packages("ipumsr")` and `install.packages("tidyverse")`. These only need to be installed once but users must load the libraried each time Rstudio is started.
+
+### Load ATUS Data into R
+Users should change the `"atus_00026.xml"` to the file name of their own ATUSX extract.
+``` {r message = FALSE}
+ddi <- read_ipums_ddi("atus_00026.xml")
+data <- read_ipums_micro(ddi)
+```
+
+# Set-up the Data
+
+## Overview of the data
+```{r eval = FALSE}
+# Make sure data is now a dataframe.
+class(data)
+
+#Look at the structure of the data
+summary(data)
+
+# Check-out the variable names
+names(data)
+```
+
+```{r results = 'hide'}
+# Make the variable names lowercase
+data <- data %>% rename_all(tolower)
+```
+
+### Change the variables' class from labelled to integer, character, or factor
+``` {r results = 'hide'}
+data <- data %>%
+  mutate( year       = as.integer(lbl_clean(year)),
+          caseid     = as.character(lbl_clean(caseid)),
+          hh_size    = as.integer(lbl_clean(hh_size)),
+          hh_child   = as.integer(lbl_clean(hh_child)),
+          hh_numkids = as.integer(lbl_clean(hh_numkids)),
+          ageychild  = as.integer(lbl_clean(ageychild)),
+          hh_numadults = as.integer(lbl_clean(hh_numadults)),
+          day        = as_factor(lbl_clean(day)),
+          wt06       = as.integer(lbl_clean(wt06)),
+          age        = as.integer(lbl_clean(age)),
+          sex        = as_factor(lbl_clean(sex)),
+          race       = as_factor(lbl_clean(race)),
+          hispan     = as_factor(lbl_clean(hispan)),
+          marst      = as_factor(lbl_clean(marst)),
+          educ       = as.integer(lbl_clean(educ)),
+          fullpart   = as.character(lbl_clean(fullpart)),
+          spousepres = as_factor(lbl_clean(spousepres)),
+          hh_numownkids = as.integer(lbl_clean(hh_numownkids)),
+          kidund13   = as_factor(lbl_clean(kidund13)),
+          activity   = as.character(lbl_clean(activity)),
+          region     = as_factor(lbl_clean(region)),
+          telesolo   = as.integer(lbl_clean(telesolo)),
+          telesp     = as.integer(lbl_clean(telesp)))
+```
+
+### Create summary variables of each activity duration
+```{r results = 'hide'}
+# Change NA to 0 for duration & activity minutes
+data[["duration"]][is.na(data[["duration"]])] <- 0
+summary(data$duration)
+
+data[["activity"]][is.na(data[["activity"]])] <- "0"
+summary(data$activity)
+```
+
+```{r}
+# Check that duration = 1440
+data %>%
+  group_by(caseid) %>%
+  summarise(total= sum(duration))
+```
+
+# Create activity variables by person
+
+## Create the activity variable components
+This creates a logical object in RStudio for each activity category.  
+The activity codes can be found in ATUS'[Activity Coding Lexicon](https://www.bls.gov/tus/lexiconnoex0317.pdf).
+```{r results = 'hide'}
+
+# Sleep
+sleep <- data$activity %in% c(
+  "10101" , "10102" ,  "10199")
+
+# Housework
+hswrk <- data$activity %in% c(
+  "20101" ,	"20102" ,	"20103" ,	"20104" ,	"20199")
+
+# Childcare
+ccare <- data$activity %in% c(
+  "30101" ,	"30102" ,	"30103" ,	"30104" ,	"30105" ,	"30108" ,	"30109" ,	"30110" ,	
+  "30111" ,	"30112" ,	"30199" ,	"30201" ,	"30202" ,	"30203" ,	"30204" ,	"30299" ,	
+  "30301" ,	"30302" ,	"30303" ,	"30399" ,	"30186")
+
+# Work
+work <- data$activity %in% c(
+  "50101" ,	"50102" ,	"50103" ,	"50189" ,	"50201" ,	"50202" ,	"50203" ,	"50204" ,	
+  "50289" , "50301" ,	"50302" ,	"50303" ,	"50304" ,	"50389" ,	"50403" ,	"50404" ,	
+  "50405" ,	"50481" ,	"50499" ,	"59999" ,	"180501" , "180502" , "180589")
+
+# Leisure
+leisure <- data$activity %in% c(
+  "120101" , "120199" , "120201" , 	"120202" , 	"120299" , 	"120401" , 	"120402" , 	"120403" , 	
+  "120404" , "120405" ,	"120499" , 	"120501" , 	"120502" , 	"120504" , 	"120599" ,	"130201" ,	
+  "130202" , "130203" ,	"130204" ,	"130205" ,	"130206" , 	"130207" , 	"130208" ,	"130209" , 	
+  "130210" , "130211" ,	"130212" , 	"130213" , 	"130214" ,	"130215" ,	"130216" ,	"130217" ,	
+  "130218" , "130219" ,	"130220" ,	"130221" ,	"130222" ,	"130223" ,	"130224" ,	"130225" ,	
+  "130226" , "130227" ,	"130228" ,	"130229" ,	"130230" ,	"130231" ,	"130232" ,	"130299" ,	
+  "130302" , "130402" , "120307" ,	"120309" ,	"120310" ,	"120311" ,	"120312" ,	"120313" ,	
+  "130101" , "130102" ,	"130103" ,	"130104" ,	"130105" ,	"130106" ,	"130107" ,	"130108" , 	
+  "130109" , "130110" ,	"130111" ,	"130112" ,	"130113" ,	"130114" ,	"130115" ,	"130116" ,	
+  "130117" , "130118" ,	"130119" ,	"130120" ,	"130121" ,	"130122" ,	"130123" ,	"130124" ,
+  "130125" , "130126" ,	"130127" ,	"130128" ,	"130129" ,	"130130" ,	"130131" ,	"130132" ,
+  "130133" , "130134" ,	"130135" ,	"130136" ,	"130199" ,	"130201" ,	"130301" ,	"130401" ,	
+  "130499" , "120301" , "120302" ,	"120303" ,	"120304" ,	"120305" ,	"120306" ,	"120308" ,	
+  "120399" , "120503" , "129999" ,	"130399" ,	"139999" ,	"160101" ,	"160102" ,	"181201" ,	
+  "181202" , "181204" ,	"181283" ,	"181299" ,	"181301" ,	"181302" ,	"181399")
+
+#Leisure sub-types
+socl <- data$activity %in% c(
+  "120101" , "120199"  ,  "120201" ,  "120202" ,  "120299" ,  "120401" ,  "120402" ,  "120403" , 	
+  "120404" , "120405"  ,	"120499" ,  "120501" ,  "120502" ,  "120504" ,  "120599" ,  "130201" ,	
+  "130202" , "130203"  ,	"130204" ,  "130205" ,	"130206" ,  "130207" ,  "130208" ,  "130209" , 	
+  "130210" , "130211"  ,	"130212" ,  "130213" ,  "130214" ,  "130215" ,	"130216" ,  "130217" ,	
+  "130218" , "130219"	 ,	"130220" ,  "130221" ,	"130222" ,  "130223" ,	"130224" ,  "130225" ,	
+  "130226" , "130227"  ,	"130228" ,  "130229" ,	"130230" ,  "130231" ,	"130232" ,  "130299" ,	
+  "130302" , "130402")
+
+actl   <- data$activity %in% c(
+  "120307" ,	"120309" ,	"120310" ,	"120311" ,	"120312" ,	"120313" ,	"130101" ,	"130102" ,	
+  "130103" ,	"130104" ,	"130105" ,	"130106" ,	"130107" ,	"130108" , 	"130109" ,	"130110" ,	
+  "130111" ,	"130112" ,	"130113" ,	"130114" ,	"130115" ,	"130116" ,	"130117" ,	"130118" ,	
+  "130119" ,	"130120" ,	"130121" ,	"130122" ,	"130123" ,	"130124" ,	"130125" ,	"130126" ,	
+  "130127" ,	"130128" ,	"130129" ,	"130130" ,	"130131" ,	"130132" ,	"130133" ,	"130134" ,	
+  "130135" ,	"130136" ,	"130199" ,	"130201" ,	"130301" ,	"130401" ,	"130499")
+
+pass   <- data$activity %in% c(
+  "120301" , 	"120302" ,	"120303" ,	"120304" ,	"120305" ,	"120306" ,	"120308" ,	"120399" ,	
+  "120503")
+
+# Television
+tele   <- data$activity %in% c(
+  "120303" , "120304")
+```
+
+## Create the activity identification variables in the dataset
+Next, we use those logical objects to create the activity category variables in our dataset. First, we create a new variable called "actcat", with missing values. This variable will identify the activity categories, using the logical objects we created.
+```{r results = 'hide'}
+data$actcat<-NA
+data$actcat[leisure] <- "leisure"
+data$actcat[sleep]   <- "sleep"
+data$actcat[hswrk]   <- "housework"
+data$actcat[ccare]   <- "child care"
+data$actcat[work]    <- "work"
+data$actcat <- as.character(data$actcat)
+```
+
+We'll also create a leisure category variable and one for television. Sub-categories of activties need their own variables. Here, television is a subcategory of passive leisure, which is a subcategory of leisure. Thus, we have more refined identification separated into different variables.
+```{r results = 'hide'}
+data$leiscat<-NA
+data$leiscat[socl] <- "social leisure"
+data$leiscat[actl] <- "active leisure"
+data$leiscat[pass] <- "passive leisure"
+data$leiscat <- as.character(data$leiscat)
+
+data$telecat<-NA
+data$telecat[tele] <- "television"
+data$telecat <- as.character(data$telecat)
+```
+```{r echo = FALSE}
+view <- select(data, caseid, activity, duration, actcat, leiscat, telecat)
+knitr::kable(
+  head(view, n = 20), 
+  caption = "New Activity Category Variables.")
+remove(view)
+```
+
+## Duration variables
+Next we need to create summary variables with the total duration of each activty for each person
+```{r results = 'hide'}
+# Master activty variables
+data <- data %>%
+  group_by(caseid) %>%
+  summarise (leisure  = sum(duration[actcat ==  "leisure"],    na.rm=TRUE),
+             sleep    = sum(duration[actcat ==  "sleep"],      na.rm=TRUE),
+             hswrk    = sum(duration[actcat ==  "housework"],  na.rm=TRUE),
+             ccare    = sum(duration[actcat ==  "child care"], na.rm=TRUE),
+             work     = sum(duration[actcat ==  "work"],       na.rm=TRUE)) %>%
+  inner_join(data, by='caseid')
+
+# Leisure activity variables
+data <- data %>%
+  group_by(caseid) %>%
+  summarise (socl     = sum(duration[leiscat ==  "social leisure"],      na.rm=TRUE),
+             actl     = sum(duration[leiscat ==  "active leisure"],      na.rm=TRUE),
+             pass     = sum(duration[leiscat ==  "passive leisure"],     na.rm=TRUE)) %>%
+  inner_join(data, by='caseid')
+
+# Television variables
+data <- data %>%
+  group_by(caseid) %>%
+  summarise (tele     = sum(duration[telecat ==  "television"],          na.rm=TRUE)) %>%
+  inner_join(data, by='caseid')
+```
+```{r echo = FALSE}
+view <- select(data, caseid, leisure, sleep, hswrk, ccare, work, socl, actl, pass, tele)
+knitr::kable(
+  head(view, n = 5), 
+  caption = "New Activity Summary Variables.")
+remove(view)
+```
+
+# Create tidy data
+Currently, the data is in long format, with each person represented in multiple rows in the dataset. We will aggregate the data so each person is represented once per row.
+```{r echo = FALSE}
+view <- select(data, caseid, pernum, lineno, sex, actline, activity, sleep)
+knitr::kable(
+  head(view, n = 10), 
+  caption = "Long format.")
+remove(view)
+```
+Create a summary dataset for the variables that repeat each row, per person
+```{r results = 'hide'}
+max <- data %>% 
+  group_by(caseid) %>% 
+  summarise_at(vars(tele, socl, actl, pass, leisure, sleep, hswrk, ccare, work, year), funs(max))
+```
+Notice that each person is now represented only once per row.  
+```{r echo = FALSE}
+view <- select(max, caseid, tele, socl, actl, pass, leisure, sleep, hswrk, ccare, work)
+head(view, n = 5)
+remove(view)
+```
+
+Create a summary dataset for the variables that appear in the first row only, by person
+```{r results = 'hide'}
+rec1 <- data %>% 
+  group_by(caseid) %>% 
+  summarise_at(vars(hh_size, hh_child, hh_numkids, ageychild, hh_numadults, region), funs(first))
+```
+```{r echo = FALSE}
+view <- select(rec1, caseid, hh_size, hh_child, hh_numkids, ageychild, hh_numadults, region)
+head(view, n = 5)
+remove(view)
+```
+
+Create a summary dataset for the variables that appear in the second row only, by person
+```{r results = 'hide'}
+rec2 <- data %>% 
+  group_by(caseid) %>% 
+  summarise_at(vars(age, sex, race, hispan, marst, educ, fullpart, spousepres,  
+                     hh_numownkids, kidund13, day, wt06, telesolo, telesp), funs(nth(., 2)))
+```
+```{r echo = FALSE}
+view <- select(rec2, caseid, age, sex, race, hispan, marst, educ, fullpart, spousepres,  
+                     hh_numownkids, kidund13, day, wt06, telesolo, telesp)
+head(view, n = 5)
+remove(view)
+```
+
+Put them all together.
+```{r results = 'hide'}
+atus <- reduce(list(max, rec1, rec2), 
+               left_join, by = "caseid")
+```
+Take a look at the person-level file with activity duration summary variables
+```{r echo = FALSE}
+head(atus, n = 5)
+remove(max)
+remove(rec1)
+remove(rec2)
+```
+
+# Transform variables
+```{r results = 'hide'}
+# Gender
+levels(atus$sex) <- c('Men', 'Women')
+
+# Age
+summary(atus$age)
+
+# Marital status
+  # cohabitors in one group regardless of marital history
+  # use spousepres variable as indicator of marital status at time of ATUS diary
+atus <- atus %>%
+  mutate(
+    mar = case_when(
+      spousepres == "Spouse present"                                                         ~ "Married",
+      spousepres == "Unmarried partner present"                                              ~ "Cohabiting",
+      marst      == "Never married" & spousepres == "No spouse or unmarried partner present" ~ "Single",
+      marst      != "Widowed" & marst != "Never married" & 
+      spousepres == "No spouse or unmarried partner present"                                 ~ "Divorced/Separated", 
+      TRUE                                                                                   ~  NA_character_ 
+    ))
+atus$mar <- as_factor(atus$mar, levels = c("Married", "Cohabiting", "Single", "Divorced/Separated", ordered = TRUE))
+
+# Extended Family Member
+atus <- atus %>%
+  mutate(
+    exfam = case_when(
+      ((spousepres == "Spouse present" | spousepres == "Unmarried partner present") & hh_numadults <= 2) |
+      ((spousepres == "No spouse or unmarried partner present") & hh_numadults <=1) ~ "No extra adults",
+      ((spousepres == "Spouse present" | spousepres == "Unmarried partner present") & hh_numadults >= 3) |
+      ((spousepres == "No spouse or unmarried partner present") & hh_numadults >=2) ~ "Extra adults",
+      TRUE                        ~  NA_character_
+    ))
+atus$exfam <- as_factor(atus$exfam, levels = c("No extra adults", "Extra adults"))
+atus$exfam <- relevel(atus$exfam, ref = "No extra adults")
+
+#Kid under 2
+atus <- atus %>%
+  mutate(
+    kidu2 = case_when(
+     ageychild <=2 ~ "Child < 2",
+     TRUE          ~ "No children < 2"
+    ))
+atus$kidu2 <- as_factor(atus$kidu2, levels = c("Child < 2", "No children < 2", ref = "No children < 2"))
+
+# Number of own HH kids
+summary(atus$hh_numownkids)
+
+# Employment
+atus <- atus %>%
+  mutate(
+    employ = case_when(
+     fullpart == "1"  ~ "Full-time",
+     fullpart == "2"  ~ "Part-time",
+     fullpart == "99" ~ "Not employed",
+     TRUE             ~  NA_character_
+    ))
+atus$employ <- as_factor(atus$employ, levels = c("Full-time", "Part-time", "Not employed"))
+
+
+# Education
+atus <- atus %>%
+  mutate(
+    educ = case_when(
+      (educ >= 10 & educ <= 17)   ~ "Less than high school",
+      (educ >= 20 & educ <= 21)   ~ "High school",
+      (educ >= 30 & educ <= 31)   ~ "Some college",
+      (educ >= 40 & educ <= 43)   ~ "BA or higher",
+      TRUE                        ~  NA_character_
+    ))
+atus$educ <- as_factor(atus$educ, levels = c("Less than high school", "High school", "Some college", "BA or higher", ref = "High school"))
+
+# Race
+atus <- atus %>%
+  mutate(
+    raceth = case_when(
+      race   == "White only" & hispan == "Not Hispanic"  ~ "White",
+      race   == "Black only" & hispan == "Not Hispanic"  ~ "Black",
+      race   == "Asian only" & hispan == "Not Hispanic"  ~ "Asian",
+      hispan != "Not Hispanic"                           ~ "Hispanic",
+      TRUE                                               ~ "Other"
+    ))
+atus$raceth <- as_factor(atus$raceth, levels = c("White", "Black", "Hispanic", "Asian", "Other"))
+atus$raceth <- relevel(atus$raceth, ref = "White")
+
+# Weekend
+atus <- atus %>%
+  mutate(
+    weekend = case_when(
+      day == "Sunday"   | day == "Saturday"     ~ "Weekend",
+      day == "Monday"   | day == "Tuesday" | day == "Wednesday" | 
+      day == "Thursday" | day == "Friday"       ~ "Weekday",
+      TRUE              ~  NA_character_
+    ))
+atus$weekend <- as_factor(atus$weekend, levels = c("Weekday", "Weekend"))
+atus$weekend <- relevel(atus$weekend, ref = "Weekday")
+
+# Region
+summary(atus$region)
+```
+
+## Sample selection
+Limit the dataset to White, Black, and Hispanic mothers of children with kids 13 or younger.  
+Let's also restict the dataset to mothers who are prime working age.
+```{r results = 'hide'}
+atus <- filter(atus, sex == "Women") # women
+atus <- filter(atus, hh_numownkids >=1) # mothers
+atus <- filter(atus, ageychild <=13) #mothers of kids 13 or younger
+atus <- filter(atus, age >= 18 & age <=54) #prime working age
+atus <- filter(atus, raceth != "Asian" & raceth != "Other") # white, black, and Hispanic
+```
+
+## Use listwise deletion to deal with missing data
+```{r results = 'hide'}
+# Keep only the variables of interest
+atus <- select(atus, caseid, wt06, year, tele, socl, actl, pass, leisure, sleep, hswrk, ccare, work, socl, actl, pass, tele, telesolo, telesp, age, sex, mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
+# Listwise deletion
+atus <- na.omit(atus)
+```
+Here's a look at the data
+```{r echo = FALSE}
+str(atus)
+```
+
+# Create Linear Models and Margins
+Load the `ggeffects` package in order to compute marginal effects from statistical models and save the results as tidy data frames.
+```{r warning = FALSE, error = FALSE, message = FALSE}
+library(ggeffects)
+```
+For each of activity variables of interest, run a linear model (`lm`) and then calculate the marginal effects (`ggeffect`)  
+`ggeffect` calculates the adjusted predictions at the means, using proportions to fix factors
+
+```{r results = 'hide'}
+#Childcare
+lm_care <- lm(ccare   ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+pcare   <- ggeffect(lm_care, terms = "mar")
+
+#Housework
+lm_hswrk <- lm(hswrk  ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+phswrk   <- ggeffect(lm_hswrk, terms = "mar")
+
+#Leisure
+lm_leis <- lm(leisure ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+pleis   <- ggeffect(lm_leis, terms = "mar")
+
+#Sleep
+lm_sleep <- lm(sleep  ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+psleep   <- ggeffect(lm_sleep, terms = "mar")
+```
+
+## Combine predictions into one dataframe
+For each of the marginal effects datasets, label the group values as the activity
+```{r results = 'hide'}
+levels(pcare$group)[levels(pcare$group)=="1"]   <- "Childcare"
+levels(phswrk$group)[levels(phswrk$group)=="1"] <- "Housework"
+levels(pleis$group)[levels(pleis$group)=="1"]   <- "Leisure"
+levels(psleep$group)[levels(psleep$group)=="1"] <- "Sleep"
+```
+Maniuplate the marital status variable
+```{r results = 'hide'}
+# Change the variable to be a factor variable from numeric
+pcare$x <- as.factor(pcare$x)
+phswrk$x <- as.factor(phswrk$x)
+pleis$x <- as.factor(pleis$x)
+psleep$x <- as.factor(psleep$x)
+```
+Combine the datatables
+```{r results = 'hide'}
+pred <- rbind(pcare, phswrk, pleis, psleep)
+```
+Prepare the categorical variables for data visualization
+```{r results = 'hide'}
+# Revalue the marital status factors to be readable
+levels(pred$x)[levels(pred$x)=="3"] <- "Married"
+levels(pred$x)[levels(pred$x)=="1"] <- "Cohabiting"
+levels(pred$x)[levels(pred$x)=="4"] <- "Single"
+levels(pred$x)[levels(pred$x)=="2"] <- "Divorced/Separated"
+
+# Order the marital status and activity factors
+pred$x     <- ordered(pred$x, levels = c("Married", "Cohabiting", "Single", "Divorced/Separated"))
+pred$group <- ordered(pred$group, levels = c("Childcare", "Housework", "Leisure", "Sleep"))
+```
+
+Calculate the difference variable (mothers time use compared to married mothers time use, by activity)
+```{r results = 'hide', warning = FALSE}
+pred <- pred %>%
+  group_by(group) %>%
+  mutate(diff = predicted - predicted[x == "Married"])
+```
+
+# Data visualization
+```{r fig.width=15,fig.height=10}
+pred %>%
+  filter(x != "Married") %>%
+  ggplot(aes(x, diff, fill = x, label = round(diff, 0))) +
+  geom_col() +
+  facet_grid(~group) +
+  ggtitle("Married Mothers Report More Housework and Less Leisure and Sleep Than Other Mothers") +
+  labs(x = NULL, y = "Minutes per day", subtitle = "Predicted minutes per day with model controls",
+       caption = "Source: American Time Use Surveys (2003 - 2017) \n Models control for extra adults, number of household kids, kids under 2, \n education, employment, race-ethnicity, age, weekend diary day, and region") +
+  theme_minimal() +
+  theme(plot.subtitle = element_text(size = 11, vjust = 1),
+        plot.caption  = element_text(vjust = 1), 
+        legend.position="none",
+        strip.text.x  = element_text(size = 16),
+        axis.title    = element_text(size = 14), 
+        axis.text     = element_text(size = 12), 
+        plot.title    = element_text(size = 16, face = "bold"),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank()) +
+  scale_y_continuous(breaks = c(-10, 0, 10, 20, 30), labels=c("-10", "Married mothers", "10", "20", "30")) +
+  scale_fill_manual(values=c("#5D478B", "#CD3278", "#116A66")) +
+  geom_errorbar(aes(ymin=diff-std.error, ymax=diff+std.error), width=.2,
+                position=position_dodge(.9), color="grey")
+```
