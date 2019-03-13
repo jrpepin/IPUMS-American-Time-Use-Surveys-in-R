@@ -21,7 +21,7 @@ setwd("C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --J
 
 # Load libraries
 library(ipumsr)
-library(dplyr, warn.conflicts = FALSE)
+library(tidyverse, warn.conflicts = FALSE)
 
 # Load ATUS Data into R
 ddi <- read_ipums_ddi("atus_00026.xml")
@@ -39,7 +39,7 @@ summary(data)
 
 ## Clean the data
   # Change class from labelled
-library(tidyverse)
+
 
 data <- data %>%
   mutate( year       = as.integer(lbl_clean(year)),
@@ -107,7 +107,7 @@ leisure <- data$activity %in% c(
   "130133" , "130134" ,	"130135" ,	"130136" ,	"130199" ,	"130201" ,	"130301" ,	"130401" ,	
   "130499" , "120301" , "120302" ,	"120303" ,	"120304" ,	"120305" ,	"120306" ,	"120308" ,	
   "120399" , "120503" , "129999" ,	"130399" ,	"139999" ,	"160101" ,	"160102" ,	"181201" ,	
-  "181202" , "181204" ,	"181283" ,	"181299" ,	"181301" ,	"181302" ,	"181399")
+  "181202" , "181204" ,	"181283" ,	"181299" ,	"181301" ,	"181302" ,	"181399" )
 
 # Sleep
 sleep <- data$activity %in% c(

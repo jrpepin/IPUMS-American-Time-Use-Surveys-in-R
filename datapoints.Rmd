@@ -59,13 +59,13 @@ IPUMS NOTE: To load data, you must download both the extract's data and the DDI.
 Download the .DAT file after ATUSX processes your request (you will get an email).  
 To download the DDI file, right click on the DDI link under the CODEBOOK heading, and select "save link file as"  
 
-Detailed instructions for importing the data can be found at: [https://cran.r-project.org/web/packages/ipumsr/vignettes/ipums.html](https://cran.r-project.org/web/packages/ipumsr/vignettes/ipums.html).  
+Detailed instructions for importing the data can be found at:   [https://cran.r-project.org/web/packages/ipumsr/vignettes/ipums.html](https://cran.r-project.org/web/packages/ipumsr/vignettes/ipums.html).  
   
 This R code was executed in the open source edition of [RStudio](https://www.rstudio.com/products/RStudio/).
   
 ### Set the working directory file path
 You will need to change your file path to the local folder where you saved the ATUS data extracts.  
-Notice the "/" lean to the right and not the left (\) if you are using a Windows computer.
+Notice the "/" lean to the right and not the left "\" if you are using a Windows computer.
 ``` {r eval = FALSE}
 setwd("C:/Users/Joanna/Dropbox/MaritalStatus")
 ```
