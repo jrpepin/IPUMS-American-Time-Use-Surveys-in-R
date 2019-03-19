@@ -124,7 +124,7 @@ $(document).ready(function () {
 <h1 class="title toc-ignore">Analyzing American Time Use Surveys in R</h1>
 <h3 class="subtitle"><em>An Example: Mothers’ Time Use by Marital Status</em></h3>
 <h4 class="author"><em>Joanna R. Pepin</em></h4>
-<h4 class="date"><em>13 March, 2019</em></h4>
+<h4 class="date"><em>19 March, 2019</em></h4>
 
 </div>
 
@@ -402,6 +402,7 @@ data %&gt;%
 <h2>Create the activity variable components</h2>
 <p>This creates a logical object in RStudio for each activity category.<br />
 The activity codes can be found in ATUS’<a href="https://www.bls.gov/tus/lexiconnoex0317.pdf">Activity Coding Lexicon</a>.</p>
+<p>NOTE: The figure published in <a href="http://www.populationassociation.org/wp-content/uploads/PAA-Spring19.pdf">PAA Affairs</a> used a more conservative measure of housework activities. This code includes all housework activities.</p>
 <pre class="r"><code># Childcare
 ccare &lt;- data$activity %in% 
   c(030100:030400, 080100:080200, 180381)
@@ -1008,7 +1009,10 @@ atus &lt;- filter(atus, raceth != &quot;Asian&quot; &amp; raceth != &quot;Other&
 <pre class="r"><code># Keep only the variables of interest
 atus &lt;- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, telesolo, telesp, age, sex, mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
 # Listwise deletion
-atus &lt;- na.omit(atus)</code></pre>
+atus &lt;- na.omit(atus)
+
+# If want to look at only recent survey years, remove # below. Don't foget to then update the caption of the figure with the correct survey years.
+# atus &lt;- filter(atus, year &gt;= 2012)</code></pre>
 <p>Here’s a look at the data</p>
 <pre><code>## Classes 'tbl_df', 'tbl' and 'data.frame':    30645 obs. of  24 variables:
 ##  $ caseid       : chr  &quot;20030100013344&quot; &quot;20030100013848&quot; &quot;20030100014209&quot; &quot;20030100014550&quot; ...

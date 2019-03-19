@@ -287,6 +287,9 @@ atus <- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, act
                mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
 atus <- na.omit(atus)
 
+# If want to look at only recent survey years, remove # below.
+# atus <- filter(atus, year >= 2012)
+
 ## Linear models and margins
 library(ggeffects)
 

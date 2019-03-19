@@ -157,7 +157,10 @@ data %>%
 
 ## Create the activity variable components
 This creates a logical object in RStudio for each activity category.  
-The activity codes can be found in ATUS'[Activity Coding Lexicon](https://www.bls.gov/tus/lexiconnoex0317.pdf).
+The activity codes can be found in ATUS'[Activity Coding Lexicon](https://www.bls.gov/tus/lexiconnoex0317.pdf).  
+
+NOTE: The figure published in [PAA Affairs](http://www.populationassociation.org/wp-content/uploads/PAA-Spring19.pdf) used a more conservative 
+measure of housework activities. This code includes all housework activities.  
 ```{r results = 'hide'}
 
 # Childcare
@@ -437,6 +440,9 @@ atus <- filter(atus, raceth != "Asian" & raceth != "Other") # white, black, and 
 atus <- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, telesolo, telesp, age, sex, mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
 # Listwise deletion
 atus <- na.omit(atus)
+
+# If want to look at only recent survey years, remove # below. Don't foget to then update the caption of the figure with the correct survey years.
+# atus <- filter(atus, year >= 2012)
 ```
 Here's a look at the data
 ```{r echo = FALSE}
