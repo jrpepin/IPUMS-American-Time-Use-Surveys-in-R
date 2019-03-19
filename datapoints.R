@@ -9,7 +9,7 @@ setwd("C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --J
   # "RECTYPE"       "YEAR"          "CASEID"        "REGION"        "HH_SIZE"       "HH_CHILD"      "HH_NUMKIDS"    "AGEYCHILD"     
   # "HH_NUMADULTS"  "PERNUM"        "LINENO"        "DAY"           "WT06"          "AGE"           "SEX"           "RACE"         
   # "HISPAN"        "MARST"         "EDUC"          "FULLPART"      "SPOUSEPRES"    "HH_NUMOWNKIDS" "KIDUND13"      "ACTLINE"       
-  # "ACTIVITY"      "DURATION"      "START"         "STOP"         
+  # "ACTIVITY"      "DURATION"       
   # "telesolo"      "telesp"
 
   # telesolo -- constructed time use variable in ATUSX -- 120303 & 120304 activities -- ALONE

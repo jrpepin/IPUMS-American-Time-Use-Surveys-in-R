@@ -39,8 +39,6 @@ P	    |	KIDUND13	    |	Own child under 13 in household
 A	    |	ACTLINE	      |	Activity line number
 A	    |	ACTIVITY	    |	Activity
 A	    |	DURATION    	|	Duration of activity
-A	    |	START       	|	Activity start time
-A	    |	STOP	        |	Activity stop time
 
 
 Additionally, two time use variables were constructed in ATUSX:  
