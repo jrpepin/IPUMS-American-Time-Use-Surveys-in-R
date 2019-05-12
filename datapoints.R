@@ -23,8 +23,9 @@ setwd("C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --J
 library(ipumsr)
 library(tidyverse, warn.conflicts = FALSE)
 
+
 # Load ATUS Data into R
-ddi <- read_ipums_ddi("atus_00026.xml")
+ddi <- read_ipums_ddi("atus_00035.xml")
 data <- read_ipums_micro(ddi)
 
 # Make sure data is now a dataframe
@@ -59,6 +60,7 @@ data <- data %>%
           educ       = as.integer(lbl_clean(educ)),
           fullpart   = as.character(lbl_clean(fullpart)),
           spousepres = as_factor(lbl_clean(spousepres)),
+          spsex      = as_factor(lbl_clean(spsex)),
           hh_numownkids = as.integer(lbl_clean(hh_numownkids)),
           kidund13   = as_factor(lbl_clean(kidund13)),
           activity   = as.character(lbl_clean(activity)),
@@ -157,20 +159,19 @@ max <- data %>%
   summarise_at(vars(tele, socl, actl, pass, ccare, hswrk, leisure, sleep, year), funs(max))
 
 rec1 <- data %>% 
-  group_by(caseid) %>% 
-  summarise_at(vars(hh_size, hh_child, hh_numkids, ageychild, hh_numadults, region), funs(first))
+  filter(rectype == 1) %>%
+  select(caseid,  hh_size, hh_child, hh_numkids, ageychild, hh_numadults, region)
 
 rec2 <- data %>% 
-  group_by(caseid) %>% 
-  summarise_at(vars(age, sex, race, hispan, marst, educ, fullpart, spousepres,  
-                    hh_numownkids, kidund13, day, wt06, telesolo, telesp), funs(nth(., 2)))
+  filter(rectype == 2) %>% 
+  select(caseid, age, sex, race, hispan, marst, educ, fullpart, spousepres, spsex,  
+         hh_numownkids, kidund13, day, wt06, telesolo, telesp)
 
 atus <- reduce(list(max, rec1, rec2), 
                   left_join, by = "caseid")
 
 head(atus, n = 5)
 # remove unnecessary databases
-remove(view)
 remove(max)
 remove(rec1)
 remove(rec2)
@@ -193,19 +194,31 @@ atus <- atus %>%
       spousepres == "Unmarried partner present"                                              ~ "Cohabiting",
       marst      == "Never married" & spousepres == "No spouse or unmarried partner present" ~ "Single",
       marst      != "Widowed" & marst != "Never married" & 
-        spousepres == "No spouse or unmarried partner present"                                 ~ "Divorced/Separated", 
+      spousepres == "No spouse or unmarried partner present"                                 ~ "Divorced/Separated", 
       TRUE                                                                                   ~  NA_character_ 
     ))
 atus$mar <- as_factor(atus$mar, levels = c("Married", "Cohabiting", "Single", "Divorced/Separated", ordered = TRUE))
+
+# Spouse/partner sex
+atus <- atus %>%
+  mutate(
+    spsex = case_when(
+      spsex == "Male"                     ~ "Male",
+      spsex == "Female"                   ~ "Female",
+      spsex == "NIU (Not in universe)"    ~ "NIU",
+      TRUE                                ~  NA_character_ 
+    ))
+
+atus$spsex <- as_factor(atus$spsex, levels = c("Male", "Female", "NIU"))
 
 # Extended Family Member
 atus <- atus %>%
   mutate(
     exfam = case_when(
       ((spousepres == "Spouse present" | spousepres == "Unmarried partner present") & hh_numadults <= 2) |
-        ((spousepres == "No spouse or unmarried partner present") & hh_numadults <=1) ~ "No extra adults",
+      ((spousepres == "No spouse or unmarried partner present") & hh_numadults <=1) ~ "No extra adults",
       ((spousepres == "Spouse present" | spousepres == "Unmarried partner present") & hh_numadults >= 3) |
-        ((spousepres == "No spouse or unmarried partner present") & hh_numadults >=2) ~ "Extra adults",
+      ((spousepres == "No spouse or unmarried partner present") & hh_numadults >=2) ~ "Extra adults",
       TRUE                        ~  NA_character_
     ))
 atus$exfam <- as_factor(atus$exfam, levels = c("No extra adults", "Extra adults"))
@@ -277,6 +290,7 @@ summary(atus$region)
 
 # Sample selection
 atus <- filter(atus, sex == "Women") # women
+atus <- filter(atus, spsex == "Male" | spsex == "NIU") # Different sex couples or singles
 atus <- filter(atus, hh_numownkids >=1) # mothers
 atus <- filter(atus, ageychild <=13) #mothers of kids 13 or younger
 atus <- filter(atus, age >= 18 & age <=54) #prime working age
