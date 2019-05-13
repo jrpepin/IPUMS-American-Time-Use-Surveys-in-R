@@ -7,9 +7,9 @@ setwd("C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --J
 # Samples:          2003-2017
 # Variables:
   # "RECTYPE"       "YEAR"          "CASEID"        "REGION"        "HH_SIZE"       "HH_CHILD"      "HH_NUMKIDS"    "AGEYCHILD"     
-  # "HH_NUMADULTS"  "PERNUM"        "LINENO"        "DAY"           "WT06"          "AGE"           "SEX"           "RACE"         
-  # "HISPAN"        "MARST"         "EDUC"          "FULLPART"      "SPOUSEPRES"    "HH_NUMOWNKIDS" "KIDUND13"      "ACTLINE"       
-  # "ACTIVITY"      "DURATION"       
+  # "HH_NUMADULTS"  "HHTENURE"      "PERNUM"        "LINENO"        "DAY"           "WT06"          "AGE"           "SEX"                    
+  # "RACE"          "HISPAN"        "MARST"         "EDUC"          "FULLPART"      "SPOUSEPRES"    "HH_NUMOWNKIDS" "KIDUND13"             
+  # "ACTLINE"       "ACTIVITY"      "DURATION"       
   # "telesolo"      "telesp"
 
   # telesolo -- constructed time use variable in ATUSX -- 120303 & 120304 activities -- ALONE
@@ -25,7 +25,7 @@ library(tidyverse, warn.conflicts = FALSE)
 
 
 # Load ATUS Data into R
-ddi <- read_ipums_ddi("atus_00035.xml")
+ddi <- read_ipums_ddi("atus_00037.xml")
 data <- read_ipums_micro(ddi)
 
 # Make sure data is now a dataframe
@@ -50,6 +50,7 @@ data <- data %>%
           hh_numkids = as.integer(lbl_clean(hh_numkids)),
           ageychild  = as.integer(lbl_clean(ageychild)),
           hh_numadults = as.integer(lbl_clean(hh_numadults)),
+          hhtenure   = as_factor(lbl_clean(hhtenure)),
           day        = as_factor(lbl_clean(day)),
           wt06       = as.integer(lbl_clean(wt06)),
           age        = as.integer(lbl_clean(age)),
@@ -160,7 +161,7 @@ max <- data %>%
 
 rec1 <- data %>% 
   filter(rectype == 1) %>%
-  select(caseid,  hh_size, hh_child, hh_numkids, ageychild, hh_numadults, region)
+  select(caseid,  hh_size, hh_child, hh_numkids, ageychild, hh_numadults, hhtenure, region)
 
 rec2 <- data %>% 
   filter(rectype == 2) %>% 
@@ -288,6 +289,19 @@ atus$weekend <- relevel(atus$weekend, ref = "Weekday")
 # Region
 summary(atus$region)
 
+# Home ownership
+atus <- atus %>%
+  mutate(
+    ownrent = case_when(
+      hhtenure == "Owned or being bought by a household member"     ~ "Own",
+      hhtenure == "Rented for cash"                                 ~ "Rent",
+      hhtenure == "Occupied without payment of cash rent"           ~ "Other",     
+      hhtenure == "NIU (Not in universe)"                           ~ "Other",
+      TRUE                                                          ~  NA_character_ 
+    ))
+
+atus$ownrent <- as_factor(atus$ownrent, levels = c("Own", "Rent", "Other"))
+
 # Sample selection
 atus <- filter(atus, sex == "Women") # women
 atus <- filter(atus, spsex == "Male" | spsex == "NIU") # Different sex couples or singles
@@ -298,7 +312,7 @@ atus <- filter(atus, raceth != "Asian" & raceth != "Other") # white, black, and 
 
 # Listwise deletion
 atus <- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, telesolo, telesp, age, sex, 
-               mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
+               mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region, ownrent)
 atus <- na.omit(atus)
 
 # If want to look at only recent survey years, remove # below.
@@ -308,19 +322,19 @@ atus <- na.omit(atus)
 library(ggeffects)
 
 #Housework
-lm_hswrk <- lm(hswrk  ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+lm_hswrk <- lm(hswrk  ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region + ownrent, data = atus, weight=wt06)
 phswrk   <- ggeffect(lm_hswrk, terms = "mar")
 
 #Leisure
-lm_leis <- lm(leisure ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+lm_leis <- lm(leisure ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region + ownrent, data = atus, weight=wt06)
 pleis   <- ggeffect(lm_leis, terms = "mar")
 
 #Childcare
-lm_care <- lm(ccare   ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+lm_care <- lm(ccare   ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region + ownrent, data = atus, weight=wt06)
 pcare   <- ggeffect(lm_care, terms = "mar")
 
 #Sleep
-lm_sleep <- lm(sleep  ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+lm_sleep <- lm(sleep  ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region + ownrent, data = atus, weight=wt06)
 psleep   <- ggeffect(lm_sleep, terms = "mar")
 
 # Combine predictions for core activities

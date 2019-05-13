@@ -22,6 +22,7 @@ H	    |	HH_CHILD	    |	Children under 18 in household
 H	    |	HH_NUMKIDS  	|	Number of children under 18 in household
 H	    |	AGEYCHILD    	|	Age of youngest household child
 H	    |	HH_NUMADULTS	|	Number of adults in household
+H     | HHTENURE      | Living quarters owned, rented, or occupied without rent
 P	    |	PERNUM	      |	Person number (general)
 P	    |	LINENO	      |	Person line number
 P	    |	DAY	          |	ATUS interview day of the week
@@ -82,9 +83,9 @@ library(tidyverse)
 Libraries can be installed with the commands `install.packages("ipumsr")` and `install.packages("tidyverse")`. These only need to be installed once but users must load the libraried each time Rstudio is started.
 
 ### Load ATUS Data into R
-Users should change the `"atus_00035.xml"` to the file name of their own ATUSX extract.
+Users should change the `"atus_00037.xml"` to the file name of their own ATUSX extract.
 ``` {r message = FALSE}
-ddi <- read_ipums_ddi("atus_00035.xml")
+ddi <- read_ipums_ddi("atus_00037.xml")
 data <- read_ipums_micro(ddi)
 ```
 
@@ -117,6 +118,7 @@ data <- data %>%
           hh_numkids = as.integer(lbl_clean(hh_numkids)),
           ageychild  = as.integer(lbl_clean(ageychild)),
           hh_numadults = as.integer(lbl_clean(hh_numadults)),
+          hhtenure   = as_factor(lbl_clean(hhtenure)),
           day        = as_factor(lbl_clean(day)),
           wt06       = as.integer(lbl_clean(wt06)),
           age        = as.integer(lbl_clean(age)),
@@ -287,10 +289,10 @@ Create a summary dataset for the variables that appear in the rectype = 1 rows, 
 ```{r results = 'hide'}
 rec1 <- data %>% 
   filter(rectype == 1) %>%
-  select(caseid,  hh_size, hh_child, hh_numkids, ageychild, hh_numadults, region)
+  select(caseid,  hh_size, hh_child, hh_numkids, ageychild, hh_numadults, hhtenure, region)
 ```
 ```{r echo = FALSE}
-view <- select(rec1, caseid, hh_size, hh_child, hh_numkids, ageychild, hh_numadults, region)
+view <- select(rec1, caseid, hh_size, hh_child, hh_numkids, ageychild, hh_numadults, hhtenure, region)
 head(view, n = 5)
 remove(view)
 ```
@@ -433,6 +435,19 @@ atus$weekend <- relevel(atus$weekend, ref = "Weekday")
 
 # Region
 summary(atus$region)
+
+# Home ownership
+atus <- atus %>%
+  mutate(
+    ownrent = case_when(
+      hhtenure == "Owned or being bought by a household member"     ~ "Own",
+      hhtenure == "Rented for cash"                                 ~ "Rent",
+      hhtenure == "Occupied without payment of cash rent"           ~ "Other",     
+      hhtenure == "NIU (Not in universe)"                           ~ "Other",
+      TRUE                                                          ~  NA_character_ 
+    ))
+
+atus$ownrent <- as_factor(atus$ownrent, levels = c("Own", "Rent", "Other"))
 ```
 
 ## Sample selection
@@ -450,7 +465,7 @@ atus <- filter(atus, raceth != "Asian" & raceth != "Other") # white, black, and 
 ## Use listwise deletion to deal with missing data
 ```{r results = 'hide'}
 # Keep only the variables of interest
-atus <- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, telesolo, telesp, age, sex, mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region)
+atus <- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, telesolo, telesp, age, sex, mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region, ownrent)
 # Listwise deletion
 atus <- na.omit(atus)
 
@@ -472,19 +487,19 @@ For each of activity variables of interest, run a linear model (`lm`) and then c
 
 ```{r results = 'hide'}
 #Childcare
-lm_care <- lm(ccare   ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+lm_care <- lm(ccare   ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region + ownrent, data = atus, weight=wt06)
 pcare   <- ggeffect(lm_care, terms = "mar")
 
 #Housework
-lm_hswrk <- lm(hswrk  ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+lm_hswrk <- lm(hswrk  ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region + ownrent, data = atus, weight=wt06)
 phswrk   <- ggeffect(lm_hswrk, terms = "mar")
 
 #Leisure
-lm_leis <- lm(leisure ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+lm_leis <- lm(leisure ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region + ownrent, data = atus, weight=wt06)
 pleis   <- ggeffect(lm_leis, terms = "mar")
 
 #Sleep
-lm_sleep <- lm(sleep  ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region , data = atus, weight=wt06)
+lm_sleep <- lm(sleep  ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region + ownrent, data = atus, weight=wt06)
 psleep   <- ggeffect(lm_sleep, terms = "mar")
 ```
 
