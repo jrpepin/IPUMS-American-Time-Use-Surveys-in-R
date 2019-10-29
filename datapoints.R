@@ -4,7 +4,7 @@ setwd("C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --J
 
 ## Create a data extract using ATUS-X
 
-# Samples:          2003-2017
+# Samples:          2003-2018
 # Variables:
   # "RECTYPE"       "YEAR"          "CASEID"        "REGION"        "HH_SIZE"       "HH_CHILD"      "HH_NUMKIDS"    "AGEYCHILD"     
   # "HH_NUMADULTS"  "HHTENURE"      "PERNUM"        "LINENO"        "DAY"           "WT06"          "AGE"           "SEX"                    
@@ -25,7 +25,7 @@ library(tidyverse, warn.conflicts = FALSE)
 
 
 # Load ATUS Data into R
-ddi <- read_ipums_ddi("atus_00037.xml")
+ddi <- read_ipums_ddi("atus_00040.xml")
 data <- read_ipums_micro(ddi)
 
 # Make sure data is now a dataframe
@@ -155,9 +155,10 @@ data <- data %>%
   inner_join(data, by='caseid')
 
 # Create person level data -- need to add formatted variables above, then add to rec1 and rec2 -- add activity variables to max
-max <- data %>% 
+max <- data %>%
+  select(caseid, tele, socl, actl, pass, ccare, hswrk, leisure, sleep, year) %>%
   group_by(caseid) %>% 
-  summarise_at(vars(tele, socl, actl, pass, ccare, hswrk, leisure, sleep, year), funs(max))
+  summarise_all(list(~max(.)))
 
 rec1 <- data %>% 
   filter(rectype == 1) %>%
@@ -198,7 +199,7 @@ atus <- atus %>%
       spousepres == "No spouse or unmarried partner present"                                 ~ "Divorced/Separated", 
       TRUE                                                                                   ~  NA_character_ 
     ))
-atus$mar <- as_factor(atus$mar, levels = c("Married", "Cohabiting", "Single", "Divorced/Separated", ordered = TRUE))
+atus$mar <- factor(atus$mar, levels = c("Married", "Cohabiting", "Single", "Divorced/Separated"), ordered = TRUE)
 
 # Spouse/partner sex
 atus <- atus %>%
@@ -210,7 +211,7 @@ atus <- atus %>%
       TRUE                                ~  NA_character_ 
     ))
 
-atus$spsex <- as_factor(atus$spsex, levels = c("Male", "Female", "NIU"))
+atus$spsex <- factor(atus$spsex, levels = c("Male", "Female", "NIU"))
 
 # Extended Family Member
 atus <- atus %>%
@@ -222,8 +223,7 @@ atus <- atus %>%
       ((spousepres == "No spouse or unmarried partner present") & hh_numadults >=2) ~ "Extra adults",
       TRUE                        ~  NA_character_
     ))
-atus$exfam <- as_factor(atus$exfam, levels = c("No extra adults", "Extra adults"))
-atus$exfam <- relevel(atus$exfam, ref = "No extra adults")
+atus$exfam <- factor(atus$exfam, levels = c("No extra adults", "Extra adults"), ordered = TRUE)
 
 #Kid under 2
 atus <- atus %>%
@@ -232,7 +232,7 @@ atus <- atus %>%
       ageychild <=2 ~ "Child < 2",
       TRUE          ~ "No children < 2"
     ))
-atus$kidu2 <- as_factor(atus$kidu2, levels = c("Child < 2", "No children < 2", ref = "No children < 2"))
+atus$kidu2 <- as_factor(atus$kidu2)
 
 # Number of own HH kids
 summary(atus$hh_numownkids)
@@ -246,8 +246,7 @@ atus <- atus %>%
       fullpart == "99" ~ "Not employed",
       TRUE             ~  NA_character_
     ))
-atus$employ <- as_factor(atus$employ, levels = c("Full-time", "Part-time", "Not employed"))
-
+atus$employ <- factor(atus$employ, levels = c("Full-time", "Part-time", "Not employed"))
 
 # Education
 atus <- atus %>%
@@ -259,7 +258,7 @@ atus <- atus %>%
       (educ >= 40 & educ <= 43)   ~ "BA or higher",
       TRUE                        ~  NA_character_
     ))
-atus$educ <- as_factor(atus$educ, levels = c("Less than high school", "High school", "Some college", "BA or higher", ref = "High school"))
+atus$educ <- factor(atus$educ, levels = c("Less than high school", "High school", "Some college", "BA or higher"))
 
 # Race
 atus <- atus %>%
@@ -271,8 +270,7 @@ atus <- atus %>%
       hispan != "Not Hispanic"                           ~ "Hispanic",
       TRUE                                               ~ "Other"
     ))
-atus$raceth <- as_factor(atus$raceth, levels = c("White", "Black", "Hispanic", "Asian", "Other"))
-atus$raceth <- relevel(atus$raceth, ref = "White")
+atus$raceth <- factor(atus$raceth, levels = c("White", "Black", "Hispanic", "Asian", "Other"))
 
 # Weekend
 atus <- atus %>%
@@ -283,8 +281,7 @@ atus <- atus %>%
         day == "Thursday" | day == "Friday"       ~ "Weekday",
       TRUE              ~  NA_character_
     ))
-atus$weekend <- as_factor(atus$weekend, levels = c("Weekday", "Weekend"))
-atus$weekend <- relevel(atus$weekend, ref = "Weekday")
+atus$weekend <- factor(atus$weekend, levels = c("Weekday", "Weekend"))
 
 # Region
 summary(atus$region)
@@ -300,7 +297,7 @@ atus <- atus %>%
       TRUE                                                          ~  NA_character_ 
     ))
 
-atus$ownrent <- as_factor(atus$ownrent, levels = c("Own", "Rent", "Other"))
+atus$ownrent <- factor(atus$ownrent, levels = c("Own", "Rent", "Other"))
 
 # Sample selection
 atus <- filter(atus, sex == "Women") # women
@@ -370,7 +367,8 @@ pred %>%
   facet_grid(~group) +
   ggtitle("Married Mothers Report More Housework and Less Leisure and Sleep Than Other Mothers") +
   labs(x = NULL, y = NULL, subtitle = "Predicted minutes per day with model controls",
-       caption = "Source: American Time Use Surveys (2003 - 2017) \n Models control for extra adults, number of household kids, kids under 2, \n education, employment, race-ethnicity, age, weekend diary day, and region") +
+       caption = "Source: American Time Use Surveys (2003 - 2018) \n Models control for extra adults, number of household kids, kids under 2, 
+       education, employment, race-ethnicity, age, weekend diary day, home ownership and region") +
   theme_minimal() +
   theme(plot.subtitle = element_text(size = 11, vjust = 1),
         plot.caption  = element_text(vjust = 1), 
