@@ -199,7 +199,7 @@ atus <- atus %>%
       spousepres == "No spouse or unmarried partner present"                                 ~ "Divorced/Separated", 
       TRUE                                                                                   ~  NA_character_ 
     ))
-atus$mar <- factor(atus$mar, levels = c("Married", "Cohabiting", "Single", "Divorced/Separated"), ordered = TRUE)
+atus$mar <- factor(atus$mar, levels = c("Married", "Cohabiting", "Single", "Divorced/Separated"), ordered = FALSE)
 
 # Spouse/partner sex
 atus <- atus %>%
@@ -223,7 +223,7 @@ atus <- atus %>%
       ((spousepres == "No spouse or unmarried partner present") & hh_numadults >=2) ~ "Extra adults",
       TRUE                        ~  NA_character_
     ))
-atus$exfam <- factor(atus$exfam, levels = c("No extra adults", "Extra adults"), ordered = TRUE)
+atus$exfam <- factor(atus$exfam, levels = c("No extra adults", "Extra adults"), ordered = FALSE)
 
 #Kid under 2
 atus <- atus %>%
