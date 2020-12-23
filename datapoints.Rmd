@@ -560,7 +560,7 @@ pred <- pred %>%
   
 # Data visualization
   
-```{r fig.width=15,fig.height=10}
+```{r }
 pred %>%
   filter(x != "Married") %>%
   ggplot(aes(x, diff, fill = x, label = round(diff, 0))) +
