@@ -7,7 +7,7 @@ output: html_document
 ---
 # Getting the data
 This tutorial uses data downloaded from IPUMS' [ATUS-X](https://www.atusdata.org/atus/) extract builder.
-The data includes samples from 2003 - 2018.
+The data includes samples from 2003 - 2019.
 
 ## Variables:
 
@@ -19,7 +19,6 @@ H	    |	CASEID	      |	ATUS Case ID
 H	    |	REGION        |	Region
 H	    |	HH_SIZE	      |	Number of people in household
 H	    |	HH_CHILD	    |	Children under 18 in household
-H	    |	HH_NUMKIDS  	|	Number of children under 18 in household
 H	    |	AGEYCHILD    	|	Age of youngest household child
 H	    |	HH_NUMADULTS	|	Number of adults in household
 H     | HHTENURE      | Living quarters owned, rented, or occupied without rent
@@ -41,13 +40,8 @@ P	    |	KIDUND13	    |	Own child under 13 in household
 A	    |	ACTLINE	      |	Activity line number
 A	    |	ACTIVITY	    |	Activity
 A	    |	DURATION    	|	Duration of activity
-
-
-Additionally, two time use variables were constructed in ATUSX:  
-
-* The *telesolo* is a constructed time use variable from activity codes 120303 & 120304 conducted while *alone*.
-* The *telesp* is a constructed time use variable from activity codes 120303 & 120304 conducted with a *spouse* or *unmarried partner* present.
-
+  
+  
 Extract Notes:  
 
 * DATA FORMAT: .dat (fixed-width text)
@@ -57,21 +51,27 @@ Extract Notes:
 ## Data Download and Import
 IPUMS NOTE: To load data, you must download both the extract's data and the DDI.  
 Download the .DAT file after ATUSX processes your request (you will get an email).  
-To download the DDI file, right click on the DDI link under the CODEBOOK heading, and select "save link file as"  
-
+To download the DDI file, right click on the DDI link under the CODEBOOK heading, and select "save link as"  
+  
 Detailed instructions for importing the data can be found at:   [https://cran.r-project.org/web/packages/ipumsr/vignettes/ipums.html](https://cran.r-project.org/web/packages/ipumsr/vignettes/ipums.html).  
   
 This R code was executed in the open source edition of [RStudio](https://www.rstudio.com/products/RStudio/).
   
-### Set the working directory file path
-You will need to change your file path to the local folder where you saved the ATUS data extracts.  
-Notice the "/" lean to the right and not the left "\" if you are using a Windows computer.
+### User specific customization 
+Specify the file path to the local folder where you saved the ATUS data extracts.  
+Notice the "/" lean to the right and not the left, if you are using a Windows computer.  
+  
+Users should also change the `"atus_00049.xml"` to the file name of their own ATUSX extract.  
+  
 ``` {r eval = FALSE}
-setwd("C:/Users/Joanna/Dropbox/MaritalStatus")
+dataDir <- file.path("C:/Users/Joanna/Dropbox/Data/ATUS")
+rawdata <- "atus_00049.xml"
 ```
 
 ``` {r setup, echo = FALSE}
 knitr::opts_knit$set(root.dir = 'C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --JP/Data Points')
+dataDir <- file.path("C:/Users/Joanna/Dropbox/Data/ATUS")
+rawdata <- "atus_00049.xml"
 ```
 
 ### Load the libraries
@@ -79,13 +79,15 @@ knitr::opts_knit$set(root.dir = 'C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Mar
 ```{r warning = FALSE, error = FALSE, message = FALSE}
 library(ipumsr)
 library(tidyverse)
+library(labelled) # convert labeled data to factors
+library(ggeffects) # Linear models and marginals
 ```
-Libraries can be installed with the commands `install.packages("ipumsr")` and `install.packages("tidyverse")`. These only need to be installed once but users must load the libraried each time Rstudio is started.
+Libraries can be installed with the commands `install.packages("ipumsr")` and `install.packages("tidyverse")`. These only need to be installed once but users must load the libraries each time Rstudio is started.
 
-### Load ATUS Data into R
-Users should change the `"atus_00040.xml"` to the file name of their own ATUSX extract.
+### Load ATUS data into R
+Users should change the `"atus_00049.xml"` to the file name of their own ATUSX extract.
 ``` {r message = FALSE}
-ddi <- read_ipums_ddi("atus_00040.xml")
+ddi <- read_ipums_ddi(file.path(dataDir, rawdata))
 data <- read_ipums_micro(ddi)
 ```
 
@@ -110,32 +112,17 @@ data <- data %>% rename_all(tolower)
 
 ### Change the variables' class from labelled to integer, character, or factor
 ``` {r results = 'hide'}
-data <- data %>%
-  mutate( year       = as.integer(lbl_clean(year)),
-          caseid     = as.character(lbl_clean(caseid)),
-          hh_size    = as.integer(lbl_clean(hh_size)),
-          hh_child   = as.integer(lbl_clean(hh_child)),
-          hh_numkids = as.integer(lbl_clean(hh_numkids)),
-          ageychild  = as.integer(lbl_clean(ageychild)),
-          hh_numadults = as.integer(lbl_clean(hh_numadults)),
-          hhtenure   = as_factor(lbl_clean(hhtenure)),
-          day        = as_factor(lbl_clean(day)),
-          wt06       = as.integer(lbl_clean(wt06)),
-          age        = as.integer(lbl_clean(age)),
-          sex        = as_factor(lbl_clean(sex)),
-          race       = as_factor(lbl_clean(race)),
-          hispan     = as_factor(lbl_clean(hispan)),
-          marst      = as_factor(lbl_clean(marst)),
-          educ       = as.integer(lbl_clean(educ)),
-          fullpart   = as.character(lbl_clean(fullpart)),
-          spousepres = as_factor(lbl_clean(spousepres)),
-          spsex      = as_factor(lbl_clean(spsex)),
-          hh_numownkids = as.integer(lbl_clean(hh_numownkids)),
-          kidund13   = as_factor(lbl_clean(kidund13)),
-          activity   = as.character(lbl_clean(activity)),
-          region     = as_factor(lbl_clean(region)),
-          telesolo   = as.integer(lbl_clean(telesolo)),
-          telesp     = as.integer(lbl_clean(telesp)))
+fcols <- c("hhtenure", "day", "sex", "race", "hispan", "marst", "spousepres", "spsex",
+           "fullpart", "kidund13", "region")
+
+icols <- c("year", "hh_size", "hh_child", "ageychild", "hh_numownkids", 
+          "age",  "educ", "wt06")
+
+ccols <- c("caseid", "activity")
+
+data[fcols] <- lapply(data[fcols], to_factor)
+data[icols] <- lapply(data[icols], as.integer)
+data[ccols] <- lapply(data[ccols], as.character)
 ```
 
 ### Prepare duration and activity variables
@@ -231,7 +218,7 @@ remove(view)
 ## Duration variables
 Next we need to create summary variables with the total duration of each activty for each person
 ```{r results = 'hide'}
-# Master activty variables
+# Master activity variables
 data <- data %>%
   group_by(caseid) %>%
   summarise (leisure  = sum(duration[actcat ==  "leisure"],    na.rm=TRUE),
@@ -290,10 +277,10 @@ Create a summary dataset for the variables that appear in the rectype = 1 rows, 
 ```{r results = 'hide'}
 rec1 <- data %>% 
   filter(rectype == 1) %>%
-  select(caseid,  hh_size, hh_child, hh_numkids, ageychild, hh_numadults, hhtenure, region)
+  select(caseid,  hh_size, hh_child, ageychild, hh_numadults, hhtenure, region)
 ```
 ```{r echo = FALSE}
-view <- select(rec1, caseid, hh_size, hh_child, hh_numkids, ageychild, hh_numadults, hhtenure, region)
+view <- select(rec1, caseid, hh_size, hh_child, ageychild, hh_numadults, hhtenure, region)
 head(view, n = 5)
 remove(view)
 ```
@@ -303,11 +290,11 @@ Create a summary dataset for the variables that appear in the rectype = 2 rows, 
 rec2 <- data %>% 
   filter(rectype == 2) %>% 
   select(caseid, age, sex, race, hispan, marst, educ, fullpart, spousepres, spsex,  
-         hh_numownkids, kidund13, day, wt06, telesolo, telesp)
+         hh_numownkids, kidund13, day, wt06)
 ```
 ```{r echo = FALSE}
 view <- select(rec2, caseid, age, sex, race, hispan, marst, educ, fullpart, spousepres,  spsex,  
-                     hh_numownkids, kidund13, day, wt06, telesolo, telesp)
+                     hh_numownkids, kidund13, day, wt06)
 head(view, n = 5)
 remove(view)
 ```
@@ -328,6 +315,8 @@ remove(rec2)
 # Transform variables
 ```{r results = 'hide'}
 # Gender
+atus$sex <-atus$sex %>%
+  droplevels()
 levels(atus$sex) <- c('Men', 'Women')
 
 # Age
@@ -388,9 +377,9 @@ summary(atus$hh_numownkids)
 atus <- atus %>%
   mutate(
     employ = case_when(
-      fullpart == "1"  ~ "Full-time",
-      fullpart == "2"  ~ "Part-time",
-      fullpart == "99" ~ "Not employed",
+      fullpart == "Full time"  ~ "Full-time",
+      fullpart == "Part time"  ~ "Part-time",
+      fullpart == "NIU (Not in universe)" ~ "Not employed",
       TRUE             ~  NA_character_
     ))
 atus$employ <- factor(atus$employ, levels = c("Full-time", "Part-time", "Not employed"))
@@ -425,7 +414,7 @@ atus <- atus %>%
     weekend = case_when(
       day == "Sunday"   | day == "Saturday"     ~ "Weekend",
       day == "Monday"   | day == "Tuesday" | day == "Wednesday" | 
-        day == "Thursday" | day == "Friday"       ~ "Weekday",
+      day == "Thursday" | day == "Friday"       ~ "Weekday",
       TRUE              ~  NA_character_
     ))
 atus$weekend <- factor(atus$weekend, levels = c("Weekday", "Weekend"))
@@ -449,7 +438,7 @@ atus$ownrent <- factor(atus$ownrent, levels = c("Own", "Rent", "Other"))
 
 ## Sample selection
 Limit the dataset to White, Black, and Hispanic mothers of children with kids 13 or younger.  
-Let's also restict the dataset to mothers who are prime working age.
+Let's also restrict the dataset to mothers who are prime working age.
 ```{r results = 'hide'}
 atus <- filter(atus, sex == "Women") # women
 atus <- filter(atus, spsex == "Male" | spsex == "NIU") # Different sex couples or singles
@@ -462,23 +451,28 @@ atus <- filter(atus, raceth != "Asian" & raceth != "Other") # white, black, and 
 ## Use listwise deletion to deal with missing data
 ```{r results = 'hide'}
 # Keep only the variables of interest
-atus <- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, telesolo, telesp, age, sex, mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region, ownrent)
+atus <- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, age, sex, 
+               mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region, ownrent)
+
 # Listwise deletion
 atus <- na.omit(atus)
-
-# If want to look at only recent survey years, remove # below. Don't foget to then update the caption of the figure with the correct survey years.
-# atus <- filter(atus, year >= 2012)
 ```
+  
+### Limit analysis to the last 5 years of survey data
+```{r results = 'hide'}
+# If you don't want to look at only recent survey years, add # below the next line of code. 
+# Don't forget to then update the caption of the figure with the correct survey years.
+atus <- filter(atus, year >= 2015)
+```
+
 Here's a look at the data
 ```{r echo = FALSE}
 str(atus)
 ```
 
 # Create Linear Models and Margins
-Load the `ggeffects` package in order to compute marginal effects from statistical models and save the results as tidy data frames.
-```{r warning = FALSE, error = FALSE, message = FALSE}
-library(ggeffects)
-```
+Use the `ggeffects` package to compute marginal effects from statistical models and save the results as tidy data frames.
+
 For each of activity variables of interest, run a linear model (`lm`) and then calculate the marginal effects (`ggeffect`)  
 `ggeffect` calculates the adjusted predictions at the means, using proportions to fix factors
 
@@ -549,7 +543,7 @@ pred %>%
   facet_grid(~group) +
   ggtitle("Married Mothers Report More Housework and Less Leisure and Sleep Than Other Mothers") +
   labs(x = NULL, y = NULL, subtitle = "Predicted minutes per day with model controls",
-       caption = "Source: American Time Use Surveys (2003 - 2018) \n Models control for extra adults, number of household kids, kids under 2,
+       caption = "Source: American Time Use Surveys (2003 - 2019) \n Models control for extra adults, number of household kids, kids under 2,
        education, employment, race-ethnicity, age, weekend diary day, home ownership and region") +
   theme_minimal() +
   theme(plot.subtitle = element_text(size = 11, vjust = 1),
@@ -562,7 +556,7 @@ pred %>%
         panel.grid.minor = element_blank(),
         panel.grid.major.x = element_blank()) +
   scale_y_continuous(breaks = c(-30, -20, -10, 0, 10, 20, 30), labels=c("-30", "-20", "-10", "Married mothers' \n minutes per day", "10", "20", "30")) +
-  scale_fill_manual(values=c("#5D478B", "#CD3278", "#116A66")) +
+  scale_fill_manual(values=c("#18BC9C", "#F39C12", "#E74C3C")) +
   geom_errorbar(aes(ymin=diff-std.error, ymax=diff+std.error), width=.2,
                 position=position_dodge(.9), color="grey")
 ```

@@ -1,19 +1,18 @@
 ## Working directory
 # setwd("C:/Users/jpepin/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --JP/Data Points")
 setwd("C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --JP/Data Points")
+dataDir <- file.path("C:/Users/Joanna/Dropbox/Data/ATUS")
+rawdata <- "atus_00049.xml"
 
 ## Create a data extract using ATUS-X
 
 # Samples:          2003-2018
 # Variables:
-  # "RECTYPE"       "YEAR"          "CASEID"        "REGION"        "HH_SIZE"       "HH_CHILD"      "HH_NUMKIDS"    "AGEYCHILD"     
+  # "RECTYPE"       "YEAR"          "CASEID"        "REGION"        "HH_SIZE"       "HH_CHILD"      "AGEYCHILD"     
   # "HH_NUMADULTS"  "HHTENURE"      "PERNUM"        "LINENO"        "DAY"           "WT06"          "AGE"           "SEX"                    
   # "RACE"          "HISPAN"        "MARST"         "EDUC"          "FULLPART"      "SPOUSEPRES"    "HH_NUMOWNKIDS" "KIDUND13"             
   # "ACTLINE"       "ACTIVITY"      "DURATION"       
-  # "telesolo"      "telesp"
 
-  # telesolo -- constructed time use variable in ATUSX -- 120303 & 120304 activities -- ALONE
-  # telesp -- constructed time use variable in ATUSX -- 120303 & 120304 activities -- spouse (??)
 
 ## Set up instructions for importing the data 
   # https://cran.r-project.org/web/packages/ipumsr/vignettes/ipums.html
@@ -22,10 +21,12 @@ setwd("C:/Users/Joanna/Dropbox/Sayer/MaritalStatus/Marital Status & Time Use --J
 # Load libraries
 library(ipumsr)
 library(tidyverse, warn.conflicts = FALSE)
+library(labelled) # convert labeled data to factors
+library(ggeffects) # Linear models and marginals
 
 
 # Load ATUS Data into R
-ddi <- read_ipums_ddi("atus_00040.xml")
+ddi <- read_ipums_ddi(file.path(dataDir, rawdata))
 data <- read_ipums_micro(ddi)
 
 # Make sure data is now a dataframe
@@ -41,33 +42,18 @@ summary(data)
 ## Clean the data
   # Change class from labelled
 
+fcols <- c("hhtenure", "day", "sex", "race", "hispan", "marst", "spousepres", "spsex",
+           "fullpart", "kidund13", "region")
 
-data <- data %>%
-  mutate( year       = as.integer(lbl_clean(year)),
-          caseid     = as.character(lbl_clean(caseid)),
-          hh_size    = as.integer(lbl_clean(hh_size)),
-          hh_child   = as.integer(lbl_clean(hh_child)),
-          hh_numkids = as.integer(lbl_clean(hh_numkids)),
-          ageychild  = as.integer(lbl_clean(ageychild)),
-          hh_numadults = as.integer(lbl_clean(hh_numadults)),
-          hhtenure   = as_factor(lbl_clean(hhtenure)),
-          day        = as_factor(lbl_clean(day)),
-          wt06       = as.integer(lbl_clean(wt06)),
-          age        = as.integer(lbl_clean(age)),
-          sex        = as_factor(lbl_clean(sex)),
-          race       = as_factor(lbl_clean(race)),
-          hispan     = as_factor(lbl_clean(hispan)),
-          marst      = as_factor(lbl_clean(marst)),
-          educ       = as.integer(lbl_clean(educ)),
-          fullpart   = as.character(lbl_clean(fullpart)),
-          spousepres = as_factor(lbl_clean(spousepres)),
-          spsex      = as_factor(lbl_clean(spsex)),
-          hh_numownkids = as.integer(lbl_clean(hh_numownkids)),
-          kidund13   = as_factor(lbl_clean(kidund13)),
-          activity   = as.character(lbl_clean(activity)),
-          region     = as_factor(lbl_clean(region)),
-          telesolo   = as.integer(lbl_clean(telesolo)),
-          telesp     = as.integer(lbl_clean(telesp)))
+icols <- c("year", "hh_size", "hh_child", "ageychild", "hh_numownkids", 
+          "age",  "educ", "wt06")
+
+ccols <- c("caseid", "activity")
+
+data[fcols] <- lapply(data[fcols], to_factor)
+data[icols] <- lapply(data[icols], as.integer)
+data[ccols] <- lapply(data[ccols], as.character)
+
 
 ## Change NA to 0 for duration minutes
 data[["duration"]][is.na(data[["duration"]])] <- 0
@@ -131,7 +117,7 @@ data$telecat<-NA
 data$telecat[tele] <- "television"
 data$telecat <- as.character(data$telecat)
 
-# Master activty variables
+# Master activity variables
 data <- data %>%
   group_by(caseid) %>%
   summarise (leisure  = sum(duration[actcat ==  "leisure"],    na.rm=TRUE),
@@ -162,12 +148,12 @@ max <- data %>%
 
 rec1 <- data %>% 
   filter(rectype == 1) %>%
-  select(caseid,  hh_size, hh_child, hh_numkids, ageychild, hh_numadults, hhtenure, region)
+  select(caseid,  hh_size, hh_child, ageychild, hh_numadults, hhtenure, region)
 
 rec2 <- data %>% 
   filter(rectype == 2) %>% 
   select(caseid, age, sex, race, hispan, marst, educ, fullpart, spousepres, spsex,  
-         hh_numownkids, kidund13, day, wt06, telesolo, telesp)
+         hh_numownkids, kidund13, day, wt06)
 
 atus <- reduce(list(max, rec1, rec2), 
                   left_join, by = "caseid")
@@ -181,6 +167,8 @@ remove(rec2)
 ## Clean variables
 
 # Gender
+atus$sex <-atus$sex %>%
+  droplevels()
 levels(atus$sex) <- c('Men', 'Women')
 
 # Age
@@ -241,9 +229,9 @@ summary(atus$hh_numownkids)
 atus <- atus %>%
   mutate(
     employ = case_when(
-      fullpart == "1"  ~ "Full-time",
-      fullpart == "2"  ~ "Part-time",
-      fullpart == "99" ~ "Not employed",
+      fullpart == "Full time"  ~ "Full-time",
+      fullpart == "Part time"  ~ "Part-time",
+      fullpart == "NIU (Not in universe)" ~ "Not employed",
       TRUE             ~  NA_character_
     ))
 atus$employ <- factor(atus$employ, levels = c("Full-time", "Part-time", "Not employed"))
@@ -308,15 +296,14 @@ atus <- filter(atus, age >= 18 & age <=54) #prime working age
 atus <- filter(atus, raceth != "Asian" & raceth != "Other") # white, black, and Hispanic
 
 # Listwise deletion
-atus <- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, telesolo, telesp, age, sex, 
+atus <- select(atus, caseid, wt06, year, ccare, hswrk, leisure, sleep, socl, actl, pass, tele, age, sex, 
                mar, exfam, kidu2, hh_numownkids, employ, educ, raceth, weekend, region, ownrent)
 atus <- na.omit(atus)
 
-# If want to look at only recent survey years, remove # below.
-# atus <- filter(atus, year >= 2012)
+# If want don't want to look at only recent survey years, add # below.
+atus <- filter(atus, year >= 2015)
 
 ## Linear models and margins
-library(ggeffects)
 
 #Housework
 lm_hswrk <- lm(hswrk  ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region + ownrent, data = atus, weight=wt06)
@@ -367,7 +354,7 @@ pred %>%
   facet_grid(~group) +
   ggtitle("Married Mothers Report More Housework and Less Leisure and Sleep Than Other Mothers") +
   labs(x = NULL, y = NULL, subtitle = "Predicted minutes per day with model controls",
-       caption = "Source: American Time Use Surveys (2003 - 2018) \n Models control for extra adults, number of household kids, kids under 2, 
+       caption = "Source: American Time Use Surveys (2003 - 2019) \n Models control for extra adults, number of household kids, kids under 2, 
        education, employment, race-ethnicity, age, weekend diary day, home ownership and region") +
   theme_minimal() +
   theme(plot.subtitle = element_text(size = 11, vjust = 1),
@@ -380,6 +367,6 @@ pred %>%
         panel.grid.minor = element_blank(),
         panel.grid.major.x = element_blank()) +
   scale_y_continuous(breaks = c(-30, -20, -10, 0, 10, 20, 30), labels=c("-30", "-20", "-10", "Married mothers' \n minutes per day", "10", "20", "30")) +
-  scale_fill_manual(values=c("#5D478B", "#CD3278", "#116A66")) +
+  scale_fill_manual(values=c("#18BC9C", "#F39C12", "#E74C3C")) +
   geom_errorbar(aes(ymin=diff-std.error, ymax=diff+std.error), width=.2,
                 position=position_dodge(.9), color="grey")
