@@ -354,7 +354,7 @@ pred %>%
   facet_grid(~group) +
   ggtitle("Married Mothers Report More Housework and Less Leisure and Sleep Than Other Mothers") +
   labs(x = NULL, y = NULL, subtitle = "Predicted minutes per day with model controls",
-       caption = "Source: American Time Use Surveys (2003 - 2019) \n Models control for extra adults, number of household kids, kids under 2, 
+       caption = "Source: American Time Use Surveys (2015 - 2019) \n Models control for extra adults, number of household kids, kids under 2, 
        education, employment, race-ethnicity, age, weekend diary day, home ownership and region") +
   theme_minimal() +
   theme(plot.subtitle = element_text(vjust = 1),
