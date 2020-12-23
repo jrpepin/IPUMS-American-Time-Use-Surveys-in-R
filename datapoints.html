@@ -864,7 +864,7 @@ data$telecat &lt;- as.character(data$telecat)</code></pre>
 </div>
 <div id="duration-variables" class="section level2">
 <h2>Duration variables</h2>
-<p>Next we need to create summary variables with the total duration of each activty for each person</p>
+<p>Next we need to create summary variables with the total duration of each activity for each person</p>
 <pre class="r"><code># Master activity variables
 data &lt;- data %&gt;%
   group_by(caseid) %&gt;%
@@ -1072,7 +1072,7 @@ data &lt;- data %&gt;%
 </tr>
 </tbody>
 </table>
-<p>Create a summary dataset for the variables that repeat each row, per person</p>
+<p>Create a summary dataset for the variables that repeat each row, per person.</p>
 <pre class="r"><code>max &lt;- data %&gt;%
   select(caseid, tele, socl, actl, pass, ccare, hswrk, leisure, sleep, year) %&gt;%
   group_by(caseid) %&gt;% 
@@ -1086,7 +1086,7 @@ data &lt;- data %&gt;%
 ## 3 20030100013352   120   220     0   120     0   325     340   640
 ## 4 20030100013848   265     0     0   265     5   270     265   755
 ## 5 20030100014165    60     0    60    60   120    70     130   460</code></pre>
-<p>Create a summary dataset for the variables that appear in the rectype = 1 rows, by person</p>
+<p>Create a summary dataset for the variables that appear in the rectype = 1 rows, by person.</p>
 <pre class="r"><code>rec1 &lt;- data %&gt;% 
   filter(rectype == 1) %&gt;%
   select(caseid,  hh_size, hh_child, ageychild, hh_numadults, hhtenure, region)</code></pre>
@@ -1098,7 +1098,7 @@ data &lt;- data %&gt;%
 ## 3 20030100~       2        0       999            2 Owned or being bough~ West  
 ## 4 20030100~       4        1         9            2 Owned or being bough~ South 
 ## 5 20030100~       4        1        14            2 Owned or being bough~ South</code></pre>
-<p>Create a summary dataset for the variables that appear in the rectype = 2 rows, by person</p>
+<p>Create a summary dataset for the variables that appear in the rectype = 2 rows, by person.</p>
 <pre class="r"><code>rec2 &lt;- data %&gt;% 
   filter(rectype == 2) %&gt;% 
   select(caseid, age, sex, race, hispan, marst, educ, fullpart, spousepres, spsex,  
@@ -1312,7 +1312,7 @@ atus &lt;- filter(atus, year &gt;= 2015)</code></pre>
 <h1>Create Linear Models and Margins</h1>
 <p>Use the <code>ggeffects</code> package to compute marginal effects from statistical models and save the results as tidy data frames.</p>
 <p>For each of activity variables of interest, run a linear model (<code>lm</code>) and then calculate the marginal effects (<code>ggeffect</code>)<br />
-<code>ggeffect</code> calculates the adjusted predictions at the means, using proportions to fix factors</p>
+<code>ggeffect</code> calculates the adjusted predictions at the means, using proportions to fix factors.</p>
 <pre class="r"><code>#Childcare
 lm_care &lt;- lm(ccare   ~ mar + exfam + hh_numownkids + kidu2 + educ + employ + raceth + age + weekend + region + ownrent, data = atus, weight=wt06)
 pcare   &lt;- ggeffect(lm_care, terms = &quot;mar&quot;)
@@ -1341,9 +1341,9 @@ pcare$x &lt;- as.factor(pcare$x)
 phswrk$x &lt;- as.factor(phswrk$x)
 pleis$x &lt;- as.factor(pleis$x)
 psleep$x &lt;- as.factor(psleep$x)</code></pre>
-<p>Combine the datatables</p>
+<p>Combine the data tables.</p>
 <pre class="r"><code>pred &lt;- rbind(pcare, phswrk, pleis, psleep)</code></pre>
-<p>Prepare the categorical variables for data visualization</p>
+<p>Prepare the categorical variables for data visualization.</p>
 <pre class="r"><code># Revalue the marital status factors to be readable
 levels(pred$x)[levels(pred$x)==&quot;3&quot;] &lt;- &quot;Married&quot;
 levels(pred$x)[levels(pred$x)==&quot;1&quot;] &lt;- &quot;Cohabiting&quot;
@@ -1353,7 +1353,7 @@ levels(pred$x)[levels(pred$x)==&quot;2&quot;] &lt;- &quot;Divorced/Separated&quo
 # Order the marital status and activity factors
 pred$x     &lt;- ordered(pred$x, levels = c(&quot;Married&quot;, &quot;Cohabiting&quot;, &quot;Single&quot;, &quot;Divorced/Separated&quot;))
 pred$group &lt;- ordered(pred$group, levels = c(&quot;Childcare&quot;, &quot;Housework&quot;, &quot;Leisure&quot;, &quot;Sleep&quot;))</code></pre>
-<p>Calculate the difference variable (mothers time use compared to married mothers time use, by activity)</p>
+<p>Calculate the difference variable (mothers time use compared to married mothers time use, by activity).</p>
 <pre class="r"><code>pred &lt;- pred %&gt;%
   group_by(group) %&gt;%
   mutate(diff = predicted - predicted[x == &quot;Married&quot;])</code></pre>
