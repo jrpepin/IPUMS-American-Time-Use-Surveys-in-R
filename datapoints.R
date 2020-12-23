@@ -184,10 +184,10 @@ atus <- atus %>%
       spousepres == "Unmarried partner present"                                              ~ "Cohabiting",
       marst      == "Never married" & spousepres == "No spouse or unmarried partner present" ~ "Single",
       marst      != "Widowed" & marst != "Never married" & 
-      spousepres == "No spouse or unmarried partner present"                                 ~ "Divorced/Separated", 
+      spousepres == "No spouse or unmarried partner present"                                 ~ "Divorced\nSeparated", 
       TRUE                                                                                   ~  NA_character_ 
     ))
-atus$mar <- factor(atus$mar, levels = c("Married", "Cohabiting", "Single", "Divorced/Separated"), ordered = FALSE)
+atus$mar <- factor(atus$mar, levels = c("Married", "Cohabiting", "Single", "Divorced\nSeparated"), ordered = FALSE)
 
 # Spouse/partner sex
 atus <- atus %>%
@@ -336,9 +336,9 @@ pred <- rbind(psleep, pcare, pleis, phswrk)
 levels(pred$x)[levels(pred$x)=="3"] <- "Married"
 levels(pred$x)[levels(pred$x)=="1"] <- "Cohabiting"
 levels(pred$x)[levels(pred$x)=="4"] <- "Single"
-levels(pred$x)[levels(pred$x)=="2"] <- "Divorced/Separated"
+levels(pred$x)[levels(pred$x)=="2"] <- "Divorced\nSeparated"
 
-pred$x     <- ordered(pred$x, levels = c("Married", "Cohabiting", "Single", "Divorced/Separated"))
+pred$x     <- ordered(pred$x, levels = c("Married", "Cohabiting", "Single", "Divorced\nSeparated"))
 pred$group <- ordered(pred$group, levels = c("Childcare", "Housework", "Leisure", "Sleep"))
 
 # Calculated difference minutes
@@ -357,13 +357,11 @@ pred %>%
        caption = "Source: American Time Use Surveys (2003 - 2019) \n Models control for extra adults, number of household kids, kids under 2, 
        education, employment, race-ethnicity, age, weekend diary day, home ownership and region") +
   theme_minimal() +
-  theme(plot.subtitle = element_text(size = 11, vjust = 1),
+  theme(plot.subtitle = element_text(vjust = 1),
         plot.caption  = element_text(vjust = 1), 
         legend.position="none",
-        strip.text.x  = element_text(size = 16),
-        axis.title    = element_text(size = 14), 
-        axis.text     = element_text(size = 12), 
-        plot.title    = element_text(size = 16, face = "bold"),
+        strip.text.x  = element_text(face = "bold"),
+        plot.title    = element_text(face = "bold"),
         panel.grid.minor = element_blank(),
         panel.grid.major.x = element_blank()) +
   scale_y_continuous(breaks = c(-30, -20, -10, 0, 10, 20, 30), labels=c("-30", "-20", "-10", "Married mothers' \n minutes per day", "10", "20", "30")) +
